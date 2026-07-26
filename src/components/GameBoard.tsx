@@ -611,10 +611,22 @@ export default function GameBoard({ onExit }: { onExit: () => void }) {
                     }}
                   >
                     <span className="flex-shrink-0 text-[9px] w-3 text-center mt-0.5 font-cinzel" style={{ color: meta.bar, textShadow: isLast ? `0 0 4px ${meta.glow}` : "none" }}>{meta.icon}</span>
-                    <span className="flex-1" style={{
+                    <span className="relative flex-1" style={{
                       fontWeight: l.kind === "win" ? 500 : 400,
                       textShadow: l.kind === "win" ? "0 0 6px rgba(200,160,67,0.3)" : "none",
-                    }}>{l.text}</span>
+                    }}>
+                      {l.text}
+                      {/* 最新一条上掠过一道墨色横扫：这一行是"刚被写上去的" */}
+                      {isLast && (
+                        <motion.span
+                          className="pointer-events-none absolute inset-y-0 -inset-x-1"
+                          initial={{ opacity: 0.85, x: "-104%" }}
+                          animate={{ opacity: 0, x: "104%" }}
+                          transition={{ duration: 0.72, ease: "easeOut" }}
+                          style={{ background: `linear-gradient(90deg, transparent, ${meta.bar}66, transparent)` }}
+                        />
+                      )}
+                    </span>
                   </motion.div>
                 );
               })}

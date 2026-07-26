@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CHARACTERS, type CharacterDef } from "../data/characters";
 import { IconQuill, IconExit, IconScroll } from "./Icons";
 import { AudioManager } from "../audio/AudioManager";
+import { TypeOut, Counter } from "./Kit";
 import { assetUrl } from "../utils/assetUrl";
 
 /**
@@ -491,27 +492,34 @@ function DetailView({ ch, onExit, onConfirm }: { ch: CharacterDef; onExit: () =>
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <h3 className="font-gothic text-2xl text-[#e8dfc8] tracking-[0.15em]" style={{ textShadow: "0 0 12px rgba(200,160,67,0.2)" }}>
-                  {ch.name}
+                  <TypeOut text={ch.name} perChar={80} delay={120} />
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="h-px w-6" style={{ background: "linear-gradient(90deg, rgba(160,128,48,0.5), transparent)" }} />
                   <span className="font-cinzel text-[9px] text-[#a08030] tracking-[0.3em]">{ch.ability}</span>
                 </div>
               </div>
-              {/* Stats - compact inline */}
+              {/* Stats - compact inline。读数滚动到位，而不是直接印上去 */}
               <div className="flex gap-1.5">
-                <div className="text-center px-2 py-1 rounded" style={{ background: "rgba(160,128,48,0.1)", border: "1px solid rgba(160,128,48,0.2)" }}>
-                  <div className="text-[7px] font-cinzel text-[#c9b896]/50 tracking-wider">篇幅</div>
-                  <div className="font-gothic text-sm text-[#e8dfc8] leading-tight">{ch.maxFragments}</div>
-                </div>
-                <div className="text-center px-2 py-1 rounded" style={{ background: "rgba(160,128,48,0.1)", border: "1px solid rgba(160,128,48,0.2)" }}>
-                  <div className="text-[7px] font-cinzel text-[#c9b896]/50 tracking-wider">技能</div>
-                  <div className="font-gothic text-sm text-[#e8dfc8] leading-tight">{ch.skills.length}</div>
-                </div>
-                <div className="text-center px-2 py-1 rounded" style={{ background: "rgba(160,128,48,0.1)", border: "1px solid rgba(160,128,48,0.2)" }}>
-                  <div className="text-[7px] font-cinzel text-[#c9b896]/50 tracking-wider">阶</div>
-                  <div className="font-gothic text-sm text-[#e8dfc8] leading-tight">{Math.max(...ch.skills.map(s => s.rankReq))}</div>
-                </div>
+                {([
+                  ["篇幅", ch.maxFragments],
+                  ["技能", ch.skills.length],
+                  ["阶", Math.max(...ch.skills.map((s) => s.rankReq))],
+                ] as [string, number][]).map(([label, value], i) => (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12 + i * 0.07, duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+                    className="text-center px-2 py-1 rounded"
+                    style={{ background: "rgba(160,128,48,0.1)", border: "1px solid rgba(160,128,48,0.2)" }}
+                  >
+                    <div className="text-[7px] font-cinzel text-[#c9b896]/50 tracking-wider">{label}</div>
+                    <div className="font-gothic text-sm text-[#e8dfc8] leading-tight">
+                      <Counter to={value} duration={700} />
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
 
@@ -584,6 +592,11 @@ function DetailView({ ch, onExit, onConfirm }: { ch: CharacterDef; onExit: () =>
               <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{
                 background: "linear-gradient(110deg, transparent 30%, rgba(200,160,67,0.1) 50%, transparent 70%)",
               }} />
+              {/* 悬停时自左向右灌满的金色底：把"入局"这个不可逆的动作做实 */}
+              <span
+                className="absolute inset-y-0 left-0 w-full origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+                style={{ background: "linear-gradient(90deg, rgba(200,160,67,0.2), rgba(200,160,67,0.05))" }}
+              />
               <IconScroll size={12} color="#a08030" />
               <span className="relative">以此身入局</span>
             </motion.button>
