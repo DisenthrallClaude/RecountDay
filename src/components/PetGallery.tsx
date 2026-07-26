@@ -452,97 +452,61 @@ export default function PetGallery({ onBack }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ══ 左侧契约名录 ══
-          原本是一排贴在屏幕最下沿的圆形按钮，只显示名字的第一个字，
-          「白」「飞」「夫」「九」这样孤零零一个字，认不出是谁；
-          而且它压在模型脚下，正好挡住召唤阵。
-          改成左侧竖排名录：编号 + 全名 + 称号，一屏看全十只，
-          与势力分布那一屏用同一套语言。 */}
-      <motion.aside
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute left-0 top-[84px] bottom-6 z-20 w-[212px] hidden md:flex flex-col px-3"
-      >
-        <div className="flex items-baseline justify-between mb-2">
-          <span className="font-cinzel text-[8px] tracking-[0.36em] text-[#4a4030]">CONTRACTS</span>
-          <span className="text-[9px] tracking-[0.18em] text-[#4a4030]" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {String(selectedIdx + 1).padStart(2, "0")} / {BEASTS.length}
-          </span>
-        </div>
-        <ul className="kit-scroll flex-1 min-h-0 overflow-y-auto space-y-[1px] pr-1">
-          {BEASTS.map((beast, i) => {
-            const on = i === selectedIdx;
-            return (
-              <li key={beast.key}>
-                <button
-                  onClick={() => handleSelect(i)}
-                  onMouseEnter={handleHover}
-                  className="group flex w-full items-center gap-2 py-[6px] pl-1 pr-2 text-left transition-colors"
-                  style={{ background: on ? `${beast.glow}12` : "transparent" }}
-                >
-                  <span
-                    className="h-px shrink-0 transition-all duration-500"
-                    style={{
-                      width: on ? 20 : 7,
-                      background: on ? beast.color : "rgba(150,138,110,0.3)",
-                      boxShadow: on ? `0 0 6px ${beast.glow}` : "none",
-                    }}
-                  />
-                  <span
-                    className="shrink-0 font-cinzel text-[9px] tracking-[0.16em] transition-colors"
-                    style={{ color: on ? beast.color : "#4a4030", fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block font-caoshu text-[15px] leading-tight transition-all duration-300"
-                      style={{
-                        color: on ? beast.color : "#8a7f6a",
-                        textShadow: on ? `0 0 10px ${beast.glow}70` : "none",
-                        transform: on ? "translateX(3px)" : "none",
-                      }}
-                    >
-                      {beast.name}
-                    </span>
-                    <span
-                      className="block font-cormorant text-[10px] italic leading-tight transition-colors"
-                      style={{ color: on ? "#8a7a5c" : "#4a4438" }}
-                    >
-                      {beast.title}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="pt-2 font-cinzel text-[8px] tracking-[0.28em] text-[#3f382c]">
-          DRAG 旋转 · SCROLL 缩放
-        </div>
-      </motion.aside>
-
-      {/* 窄屏保留一条横向切换轨 */}
-      <div className="md:hidden absolute bottom-0 left-0 right-0 z-20 px-5 py-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+      {/* ══ 底部灵宠切换栏 ══
+          名字仍然放在下面 —— 这一屏的主体是中央那只 3D 神兽，
+          名录横在底沿正好收边，不跟模型抢位置。
+          只把每颗圆钮里的单字换成全名 + 称号：原来「白」「飞」「夫」「九」
+          孤零零一个字，认不出是谁。 */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 px-6 pb-4 pt-2">
+        <div
+          className="flex items-end justify-center gap-1 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "none" }}
+        >
           {BEASTS.map((beast, i) => {
             const on = i === selectedIdx;
             return (
               <button
                 key={beast.key}
                 onClick={() => handleSelect(i)}
-                className="shrink-0 px-2.5 py-1 font-caoshu text-[13px] transition-all"
-                style={{
-                  border: `1px solid ${on ? beast.color : "#3a342a"}`,
-                  color: on ? beast.color : "#6a5418",
-                  background: on ? `${beast.glow}18` : "rgba(10,8,6,0.6)",
-                }}
+                onMouseEnter={handleHover}
+                className="group relative flex-shrink-0 px-3 py-1.5 text-center transition-all duration-300"
+                style={{ background: on ? `${beast.glow}12` : "transparent" }}
               >
-                {beast.name}
+                {/* 选中项头顶那条会伸长的刻线 */}
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-px transition-all duration-500"
+                  style={{
+                    width: on ? "72%" : "0%",
+                    background: beast.color,
+                    boxShadow: on ? `0 0 8px ${beast.glow}` : "none",
+                  }}
+                />
+                <span
+                  className="block font-caoshu leading-tight transition-all duration-300"
+                  style={{
+                    fontSize: on ? "20px" : "16px",
+                    color: on ? beast.color : "#6a5f4c",
+                    textShadow: on ? `0 0 12px ${beast.glow}80` : "none",
+                  }}
+                >
+                  {beast.name}
+                </span>
+                <span
+                  className="block font-cormorant text-[9px] italic leading-tight transition-colors duration-300"
+                  style={{ color: on ? "#8a7a5c" : "#443e32" }}
+                >
+                  {beast.title}
+                </span>
               </button>
             );
           })}
+        </div>
+
+        {/* 操作提示 */}
+        <div className="text-center mt-1">
+          <span className="font-cinzel text-[9px] text-[#4a4030] tracking-[0.3em]">
+            DRAG TO ROTATE · SCROLL TO ZOOM
+          </span>
         </div>
       </div>
     </div>

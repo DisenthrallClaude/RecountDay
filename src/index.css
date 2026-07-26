@@ -1169,3 +1169,40 @@ img { -webkit-user-drag: none; user-select: none; }
 @media (prefers-reduced-motion: reduce) {
   .kit-blink, .kit-pulse, .kit-sweep, .kit-marquee { animation: none !important; }
 }
+
+/* ============================================================================
+   PaperBurn 的余烬粒子
+   ——放在这里而不是组件内联 <style>：点火那一瞬间注入一整块样式表会触发
+   一次全量样式重算，正好撞在演出第一帧上。
+   ============================================================================ */
+.pb-particle {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation-timing-function: cubic-bezier(0.16, 0.62, 0.4, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes pb-ember {
+  0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(0.4); }
+  14%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--pb-drift), var(--pb-rise), 0) rotate(var(--pb-spin)) scale(0.2); }
+}
+@keyframes pb-ash {
+  0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(0.4); }
+  18%  { opacity: 0.92; }
+  100% { opacity: 0; transform: translate3d(var(--pb-drift), var(--pb-rise), 0) rotate(var(--pb-spin)) scale(0.25); }
+}
+@keyframes pb-smoke {
+  0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(0.4); }
+  22%  { opacity: 0.5; }
+  100% { opacity: 0; transform: translate3d(var(--pb-drift), var(--pb-rise), 0) scale(2.2); }
+}
+
+.pb-ember { animation-name: pb-ember; }
+.pb-ash   { animation-name: pb-ash; }
+.pb-smoke { animation-name: pb-smoke; animation-timing-function: ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-particle { animation: none !important; opacity: 0 !important; }
+}

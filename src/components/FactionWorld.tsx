@@ -10,10 +10,11 @@
  *   竖排名录一屏能看全 22 行，每行有编号、名称、所属域与一条随状态
  *   伸缩的刻线 —— 名录本身就成了一件可读的仪器，而不是一排按钮。
  *
- * 右侧速览刻意做小：立绘缩到 16:10 的一条，简介截断到三行。
+ * 右侧速览做小、但不能做没：立绘 4:5，简介截断到三行。
  * 这一栏的职责是"悬停即知道这是谁"，不是"在这里读完全部资料"；
  * 真要细读，按「展开全档」推全屏卷宗。之前那块 400px 宽、9:13 立绘的
- * 大面板一开就吃掉半个屏幕，把星球挤没了，反而两头不讨好。
+ * 大面板一开就吃掉半个屏幕，把星球挤没了；但中途缩到 16:10 又矫枉过正 ——
+ * 这批立绘都是竖构图海报，切成横条之后只剩一截天空，看不出画的是什么。
  * ============================================================================
  */
 
@@ -25,7 +26,7 @@ import FactionGlobe from "./FactionGlobe";
 import { assetUrl } from "../utils/assetUrl";
 import { AudioManager } from "../audio/AudioManager";
 import { IconExit, FactionIcon } from "./Icons";
-import { Scramble, Label, Readout, Toggle, Caret, CornerTicks, FilmOverlay, EASE } from "./Kit";
+import { Scramble, TypeOut, Label, Readout, Toggle, Caret, CornerTicks, FilmOverlay, EASE } from "./Kit";
 
 type Projected = { id: number; x: number; y: number; vis: boolean };
 type Tele = { lat: number; lon: number; zoom: number; fps: number };
@@ -202,6 +203,33 @@ export default function FactionWorld({ onBack, onView3D }: { onBack: () => void;
         </button>
       </header>
 
+      {/* 名条走马灯：一条缓慢横移的势力名录，
+          既是装饰，也让"这颗星球上住着二十二伙人"这件事一直在场。 */}
+      <div className="relative z-30 shrink-0 overflow-hidden py-1" style={{ borderTop: `1px solid ${GOLD}14`, borderBottom: `1px solid ${GOLD}14` }}>
+        <div className="kit-marquee flex w-max">
+          {[0, 1].map((dup) => (
+            <div key={dup} className="flex shrink-0">
+              {FACTIONS.map((f) => (
+                <button
+                  key={dup + "-" + f.id}
+                  onClick={() => pick(f.id)}
+                  onMouseEnter={() => setHoveredId(f.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className="flex items-center gap-2 px-5 whitespace-nowrap transition-colors"
+                  style={{ color: hoveredId === f.id || selectedId === f.id ? GOLD_HI : "#4e4534" }}
+                >
+                  <FactionIcon category={f.category} size={9} color="currentColor" />
+                  <span className="text-[10.5px] tracking-[0.16em]">{f.name}</span>
+                  <span className="font-cinzel text-[7.5px] tracking-[0.3em] opacity-60">
+                    {String(f.id).padStart(2, "0")}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ══ 主体三栏 ══ */}
       <div className="relative flex-1 min-h-0 flex">
         {/* ── 左：势力名录 ── */}
@@ -267,6 +295,33 @@ export default function FactionWorld({ onBack, onView3D }: { onBack: () => void;
             })}
           </div>
 
+          {/* 悬停速览：跟着据点走的一张小签，
+              让"鼠标停在哪颗星上"这件事有即时反馈，不必等右栏。 */}
+          <AnimatePresence>
+            {hoveredId != null && hoveredId !== selectedId && (
+              <motion.div
+                key={hoveredId}
+                initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                transition={{ duration: 0.18, ease: EASE }}
+                className="pointer-events-none absolute bottom-10 left-1/2 -translate-x-1/2 px-3.5 py-1.5 text-center"
+                style={{
+                  background: "linear-gradient(150deg, rgba(18,15,11,0.95), rgba(8,6,5,0.95))",
+                  border: `1px solid ${GOLD}44`,
+                  maxWidth: "min(86%, 460px)",
+                }}
+              >
+                <div className="font-caoshu text-[16px] tracking-[0.14em]" style={{ color: INK }}>
+                  {FACTIONS.find((f) => f.id === hoveredId)?.name}
+                </div>
+                <div className="font-brush text-[10.5px] mt-0.5 truncate" style={{ color: MUTE }}>
+                  「{FACTIONS.find((f) => f.id === hoveredId)?.quote}」
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* 遥测：镜头在哪、放大多少、跑多快 */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -278,6 +333,8 @@ export default function FactionWorld({ onBack, onView3D }: { onBack: () => void;
             <Readout k="CAM.LON" v={`${tele.lon >= 0 ? "+" : ""}${tele.lon.toFixed(2)}°`} color={DIM} />
             <Readout k="ZOOM" v={`×${tele.zoom.toFixed(2)}`} color={DIM} />
             <Readout k="SITES" v={`${String(filtered.length).padStart(2, "0")}/${FACTIONS.length}`} color={DIM} />
+            <Readout k="LINKS" v={showLinks ? `${linkedIds.size || "—"}` : "OFF"} color={DIM} />
+            <Readout k="FPS" v={String(Math.round(tele.fps)).padStart(2, "0")} color={DIM} />
           </motion.div>
 
           {/* 视图开关 */}
@@ -421,9 +478,18 @@ function IndexRail({
                   onClick={() => onPick(f.id)}
                   onMouseEnter={() => { onHover(f.id); AudioManager.playSfx("hover", { volume: 0.22 }); }}
                   onMouseLeave={() => onHover(null)}
-                  className="group flex w-full items-center gap-2 py-[5px] pl-1.5 pr-2 text-left transition-colors"
+                  className="group relative flex w-full items-center gap-2 py-[5px] pl-1.5 pr-2 text-left transition-colors"
                   style={{ background: on ? "rgba(200,160,67,0.09)" : "transparent" }}
                 >
+                  {/* 选中行左缘的呼吸光：让"当前在看哪一行"在余光里也成立 */}
+                  {on && (
+                    <motion.span
+                      layoutId="rail-cursor"
+                      className="absolute left-0 top-0 bottom-0 w-[2px]"
+                      style={{ background: `linear-gradient(180deg, transparent, ${GOLD_HI}, transparent)` }}
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    />
+                  )}
                   {/* 刻线：选中最长，其次悬停，其次"与选中项有关联" */}
                   <span
                     className="h-px shrink-0 transition-all duration-500"
@@ -492,7 +558,7 @@ function BriefPanel({
       initial={reduce ? false : { opacity: 0, x: 24 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.8, delay: 0.22, ease: EASE }}
-      className="relative z-30 hidden md:flex shrink-0 w-[276px] lg:w-[300px] flex-col justify-center px-3"
+      className="relative z-30 hidden md:flex shrink-0 w-[300px] lg:w-[336px] flex-col justify-center px-3"
     >
       <AnimatePresence mode="wait">
         <motion.article
@@ -511,8 +577,9 @@ function BriefPanel({
         >
           <CornerTicks color={`${GOLD_HI}55`} size={11} />
 
-          {/* 立绘：从 9:13 的整幅缩成 16:10 的一条，只留最有辨识度的那部分 */}
-          <div className="relative overflow-hidden" style={{ aspectRatio: "16 / 10" }}>
+          {/* 立绘：比原来的 9:13 整幅小，但 16:10 那一条又切得太狠 ——
+              4:5 是这批竖构图海报还能看出「画的是什么」的下限。 */}
+          <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
             <motion.img
               src={faction.image}
               alt={faction.name}
@@ -526,13 +593,23 @@ function BriefPanel({
               className="absolute inset-0"
               style={{ background: "linear-gradient(180deg, rgba(6,5,3,0.2) 0%, transparent 34%, rgba(7,6,4,0.94) 100%)" }}
             />
+            {/* 一道极淡的斜向高光缓慢扫过立绘：静止的图因此有了呼吸 */}
+            {!reduce && (
+              <motion.div
+                className="pointer-events-none absolute inset-y-0 w-1/3"
+                style={{ background: "linear-gradient(105deg, transparent, rgba(255,238,200,0.09), transparent)" }}
+                initial={{ x: "-160%" }}
+                animate={{ x: "460%" }}
+                transition={{ duration: 5.2, repeat: Infinity, repeatDelay: 2.6, ease: "easeInOut" }}
+              />
+            )}
             <div className="absolute top-1.5 left-2 flex items-center gap-1.5">
               <FactionIcon category={faction.category} size={10} color={cat.color} />
               <Label color="#b9a271">{cat.label}</Label>
             </div>
             <div className="absolute bottom-1.5 left-2.5 right-2.5 flex items-end justify-between gap-2">
-              <div className="font-caoshu text-[25px] leading-none tracking-[0.14em]" style={{ color: INK, textShadow: "0 2px 12px rgba(0,0,0,0.9)" }}>
-                {faction.name}
+              <div className="font-caoshu text-[29px] leading-none tracking-[0.14em]" style={{ color: INK, textShadow: "0 2px 12px rgba(0,0,0,0.9)" }}>
+                <TypeOut text={faction.name} perChar={62} />
               </div>
               <span className="font-cinzel text-[8px] tracking-[0.2em] pb-0.5" style={{ color: GOLD }}>
                 <Scramble text={String(faction.id).padStart(2, "0")} speed={40} />

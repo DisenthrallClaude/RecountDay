@@ -1673,8 +1673,8 @@ function FactionParchment({ factionName, factionCategory, winCondition, quote, o
       <PaperBurn
         active={burning}
         origin="bottom-right"
-        durationMs={3000}
-        density={92}
+        durationMs={1700}
+        density={62}
         onFinished={onClose}
       >
         <div
