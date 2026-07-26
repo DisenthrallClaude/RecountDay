@@ -7,7 +7,7 @@
  *
  *   已烧穿 : dist(p, origin) <  R            → 纸消失
  *   炭化带 : R < dist < R + CHAR             → 焦黑，向外渐变成褐
- *   预热带 : R + CHAR < dist < R + SCORCH    → 纸被烤黄
+ *   预热带 : 再往外一段                      → 纸被烤黄
  *   火焰   : 贴着 R 的那一圈                  → 白炽核心 + 橙焰舌
  *
  * ── 为什么不用 SVG 滤镜 ──────────────────────────────────────────────
@@ -200,7 +200,6 @@ function PaperBurnInner({
   const cy = oy * H;
 
   const CHAR = Math.max(6, Math.min(16, Math.min(W, H) * 0.042));
-  const SCORCH = CHAR * 3.2;
   /** 破碎幅度：边界最多偏离正圆多少像素 */
   const AMP = Math.max(10, Math.min(46, Math.min(W, H) * 0.17));
   /** 噪声的空间尺度：一个"叶瓣"大约多宽 */
@@ -229,6 +228,19 @@ function PaperBurnInner({
 
   const ready = box.w > 1;
   const burning = active && ready;
+
+  /*
+   * onFinished 存进 ref。
+   * 调用方几乎一定会写成 onFinished={() => setOpen(false)} —— 每次父组件
+   * 重渲染都是一个新函数。若把它列进下面那个 effect 的依赖，父组件每渲染
+   * 一次，演出就被拆掉重建一次，start 归零、火线退回原点。
+   * 牌桌上父组件每秒要重渲染好几次，于是火永远停在起火的那个角上反复重烧 ——
+   * 这正是"一直在烧同一个角、烧不完"的真正原因（跟帧率是两码事）。
+   */
+  const finishRef = useRef(onFinished);
+  useEffect(() => {
+    finishRef.current = onFinished;
+  }, [onFinished]);
 
   /* ── 演出主循环 ──
      自己跑 rAF：每帧只做一次射线求解 + 七次 setAttribute，
@@ -470,24 +482,39 @@ function PaperBurnInner({
       } else if (!done) {
         done = true;
         if (g) g.clearRect(0, 0, SPARK_W, SPARK_H);
+        // 烧完就是烧完了：即便调用方把 active 撤回 false（而不是卸载），
+        // 这张纸也不该又整张长回来。
+        if (paperClipRef.current) paperClipRef.current.style.visibility = "hidden";
       }
     };
 
     if (reduce) {
       // 关掉动效时不做演出，直接收场
-      const t = window.setTimeout(() => onFinished?.(), 260);
+      const t = window.setTimeout(() => finishRef.current?.(), 260);
       return () => window.clearTimeout(t);
     }
 
     raf = requestAnimationFrame(frame);
     // 火线到头之后再留一小段让余烬飘完
-    const timer = window.setTimeout(() => onFinished?.(), durationMs + 520);
+    const finish = () => {
+      done = true;
+      if (paperClipRef.current) paperClipRef.current.style.visibility = "hidden";
+      finishRef.current?.();
+    };
+    const timer = window.setTimeout(finish, durationMs + 520);
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(timer);
+      // 中途被取消（而非烧完）时把纸还原
+      if (!done && paperClipRef.current) {
+        paperClipRef.current.style.clipPath = "";
+        paperClipRef.current.style.visibility = "";
+      }
     };
-  }, [burning, reduce, durationMs, maxR, AMP, CHAR, SCORCH, FEAT, cx, cy, W, H, noise, onFinished,
-      particles, SPARK_W, SPARK_H, SPARK_PAD_X, SPARK_PAD_Y]);
+    // 依赖里只留"几何 + 是否点火"。任何每帧都会变的东西进了这里，
+    // 都会把整段演出重置一次。
+  }, [burning, reduce, durationMs, maxR, AMP, CHAR, FEAT, cx, cy, W, H, noise,
+      particles, SPARK_W, SPARK_H]);
 
   return (
     <div ref={hostRef} className={`relative ${className}`} style={style}>
