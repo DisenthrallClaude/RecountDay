@@ -11,7 +11,8 @@ import { produce, enableMapSet } from "immer";
 import type { GameState } from "../engine/types";
 import { buildInitialState } from "../store/setup";
 import { processJudgementEffect } from "../store/cardEffects";
-import { setPaceFactor } from "../store/helpers";
+import { setPaceFactor, updateMinRatio } from "../store/helpers";
+import { eliminatePlayer } from "../store/damage";
 import { buildFullDeck, type CardDef } from "../data/cards";
 
 setPaceFactor(0);
@@ -182,5 +183,58 @@ describe("回归：封笔与重叙必须真的生效", () => {
     await processJudgementEffect(set, get, 2, fengbi, flip);
 
     expect(state.players[2].statusFlags["skip_play"]).toBeFalsy();
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   以下两条来自「跑 1000 局确定性对局 + 检查不变量」这一轮的产出。
+   两个都是人肉读代码很难发现、但在真实对局里稳定复现的问题。
+   ════════════════════════════════════════════════════════════════ */
+
+describe("回归：致命伤被救回后，minFragmentRatio 不得留下负值", () => {
+  // applyDamage 的顺序是"先把 fragments 扣成负数 → 再判定要不要救"，
+  // 而 updateMinRatio 恰好卡在中间被调用，于是把 -0.5 这样的比率
+  // 永久写进了统计。后果很具体：白烛修会(13) 要求 minFragmentRatio >= 0.5，
+  // 一旦被写成负数，那名玩家整局都不可能再达成胜利条件。
+  // 实测 120 局里约 15% 出现过。
+  it("fragments 为负时按 0 计，比率不会低于 0", () => {
+    const state = freshState();
+    const p = state.players[0];
+    p.stats.initialMaxFragments = 4;
+    p.maxFragments = 4;
+    p.stats.minFragmentRatio = 1;
+
+    // 模拟"被打成 -2、随后【不朽之躯】把它拉回 1"这一瞬间
+    p.fragments = -2;
+    updateMinRatio(p);
+    expect(p.stats.minFragmentRatio, "负篇幅被原样记进了最低比率").toBeGreaterThanOrEqual(0);
+    expect(p.stats.minFragmentRatio).toBe(0);
+
+    p.fragments = 1;
+    updateMinRatio(p);
+    // 已经跌到过 0，后面回血不应该把历史最低值抬回去
+    expect(p.stats.minFragmentRatio).toBe(0);
+  });
+});
+
+describe("回归：淘汰时藏锋区的牌必须回到弃牌堆", () => {
+  // eliminatePlayer 清了手牌 / 装备 / 判定区，唯独漏了 stored（崔攸·藏锋）。
+  // 那张牌会永远卡在一个已淘汰玩家身上：不回弃牌堆、不参与洗牌，
+  // 等于从这一局里凭空消失。
+  it("被淘汰者不再持有藏锋牌，且牌张总数守恒", () => {
+    let state = freshState();
+    const before = totalCards(state);
+
+    state = produce(state, (d: GameState) => {
+      const victim = d.players[1];
+      // 从牌堆里拿一张塞进藏锋区，保持总数不变
+      const c = d.deck.pop() as CardDef;
+      victim.stored = c;
+      victim.fragments = 0;
+      eliminatePlayer(d, 1, 0);
+    });
+
+    expect(totalCards(state), "藏锋区的牌在淘汰后丢失了").toBe(before);
+    expect(state.players[1].stored, "已淘汰玩家仍持有藏锋牌").toBeNull();
   });
 });

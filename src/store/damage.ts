@@ -180,9 +180,18 @@ export function eliminatePlayer(state: GameState, seat: number, killerSeat: numb
       killer.stats.damagedEliminated.add(seat);
     }
   }
-  // drop equips/hand to discard
-  state.discardPile.push(...p.hand, ...Object.values(p.equips).filter(Boolean) as CardDef[], ...p.judgement);
-  p.hand = []; p.equips = {}; p.judgement = [];
+  // 手牌 / 装备 / 判定区 / 藏锋区，全部入弃牌堆。
+  // 藏锋区（崔攸）此前被漏掉了：那张牌会永远卡在一个已淘汰玩家身上，
+  // 既不回弃牌堆、也不参与洗牌，等于从这一局里凭空消失。
+  // skills.ts:283/300 处理换牌与释放时都是把 stored 推进弃牌堆的，
+  // 这里保持同一套约定。
+  state.discardPile.push(
+    ...p.hand,
+    ...(Object.values(p.equips).filter(Boolean) as CardDef[]),
+    ...p.judgement,
+    ...(p.stored ? [p.stored] : []),
+  );
+  p.hand = []; p.equips = {}; p.judgement = []; p.stored = null;
 
   // 淘汰会同时改变击杀数、残片数、助攻数和存活人数 —— 立刻结算，
   // 否则达成条件的玩家可能在同一回合内被反杀而丢掉胜利。

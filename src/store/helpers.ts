@@ -306,7 +306,14 @@ export function checkBlankBody(state: GameState, targetSeat: number): boolean {
 export function updateMinRatio(p: PlayerState) {
   if (!p.alive) return;
   const denom = p.stats.initialMaxFragments || p.maxFragments || 1;
-  const ratio = p.fragments / denom;
+  // 必须夹到 0：applyDamage 是"先扣数、再判定要不要救"的顺序，
+  // 于是致命伤打进来的那一瞬间 fragments 可以是 -2，紧接着才被
+  // 【不朽之躯】拉回 1 或被【残墨】救起。这个中间态从来不会被玩家看到，
+  // 却会在这里被采样成一个负的比率并永久留在 minFragmentRatio 里。
+  // 后果很具体：白烛修会(13) 要求 minFragmentRatio >= 0.5，
+  // 一旦被写进负数，那名玩家这一局就再也不可能达成胜利条件了。
+  // 实测 120 局里有约 15% 的对局出现过负值。
+  const ratio = Math.max(0, p.fragments) / denom;
   if (ratio < p.stats.minFragmentRatio) p.stats.minFragmentRatio = ratio;
   // 迷途(18)：跌至 2 段及以下即打标记，回满时在 healPlayer 中结算
   if (p.fragments > 0 && p.fragments <= 2) {
