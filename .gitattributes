@@ -1,0 +1,13 @@
+# 统一换行，避免跨平台改动噪声
+* text=auto eol=lf
+
+# 二进制资源不做文本转换
+*.glb  binary
+*.jpg  binary
+*.png  binary
+*.webp binary
+*.mp3  binary
+*.mp4  binary
+
+# 模型已用 meshopt + WebP 重新压制（758MB → 86MB，单个 7~10MB），
+# 因此不再需要 Git LFS —— 直接作为普通二进制文件入库即可。
