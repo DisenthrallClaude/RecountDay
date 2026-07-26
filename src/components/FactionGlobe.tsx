@@ -79,6 +79,13 @@ export interface GlobeProps {
   onHover: (id: number | null) => void;
   /** 每个据点在屏幕上的位置，供外层渲染 HTML 标签 */
   onProject?: (pts: { id: number; x: number; y: number; vis: boolean }[]) => void;
+  /**
+   * 镜头遥测。约每 6 帧上报一次 —— 逐帧上报会把外层的读数变成噪声，
+   * 也白白多出 60 次/秒的 setState。
+   */
+  onTelemetry?: (t: { lat: number; lon: number; zoom: number; fps: number }) => void;
+  /** 是否绘制选中据点的大圆连线 */
+  showLinks?: boolean;
   reduce?: boolean;
 }
 
@@ -89,6 +96,8 @@ export default function FactionGlobe({
   onSelect,
   onHover,
   onProject,
+  onTelemetry,
+  showLinks = true,
   reduce = false,
 }: GlobeProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -116,6 +125,7 @@ export default function FactionGlobe({
     selected: null as number | null,
     intro: 0,
     auto: true,
+    links: true,
     linkT: 0,
     ripple: -1,
   });
@@ -125,6 +135,7 @@ export default function FactionGlobe({
   }, []);
 
   useEffect(() => { st.current.auto = autoRotate; }, [autoRotate]);
+  useEffect(() => { st.current.links = showLinks; }, [showLinks]);
   useEffect(() => { st.current.hovered = hoveredId; }, [hoveredId]);
 
   // 选中据点：把它转到正面并轻微推近
@@ -190,6 +201,7 @@ export default function FactionGlobe({
     const ctx = canvas.getContext("2d", { alpha: true })!;
     let raf = 0;
     let W = 0, H = 0, dpr = 1, cell = 3, gw = 0, gh = 0;
+    const tele = { frames: 0, fps: 60 };
     let depth = new Float32Array(0);
     let lumL = new Float32Array(0); // 陆地亮度
     let lumS = new Float32Array(0); // 海洋亮度
@@ -343,7 +355,7 @@ export default function FactionGlobe({
       }
 
       // ── 选中据点的大圆连线 ──
-      if (s.selected != null) {
+      if (s.selected != null && s.links) {
         const src = FACTION_SITES.find((m) => m.id === s.selected);
         const links = FACTION_LINKS[s.selected] ?? [];
         if (src) {
@@ -475,6 +487,19 @@ export default function FactionGlobe({
 
       onProject?.(projected.current);
 
+      // 镜头遥测：降频上报，顺带算一个平滑后的帧率
+      tele.frames++;
+      if (tele.frames % 6 === 0) {
+        const inst = dt > 0 ? 1 / dt : 60;
+        tele.fps = tele.fps * 0.85 + inst * 0.15;
+        onTelemetry?.({
+          lat: s.rotX / DEG,
+          lon: (((-(s.rotY + Math.PI / 2) / DEG + 180) % 360) + 360) % 360 - 180,
+          zoom: s.zoom,
+          fps: tele.fps,
+        });
+      }
+
       // ── 悬停拾取 ──
       if (!s.dragging && s.pointerX > -9000) {
         let best: number | null = null;
@@ -498,7 +523,7 @@ export default function FactionGlobe({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [onHover, onProject, reduce]);
+  }, [onHover, onProject, onTelemetry, reduce]);
 
   return (
     <div ref={wrapRef} className="relative h-full w-full select-none">

@@ -1117,3 +1117,55 @@ img { -webkit-user-drag: none; user-select: none; }
   50% { opacity: 0.4; }
   100% { width: 250px; height: 250px; opacity: 0; border-width: 0.3px; }
 }
+
+/* ============================================================================
+   Kit.tsx 配套动效
+   ——集中放在这里，组件里不再各自内联 <style>，避免同一个 keyframes
+   被重复注入十几份。
+   ============================================================================ */
+
+@keyframes kit-grain {
+  0%   { transform: translate(0, 0); }
+  50%  { transform: translate(-2%, 1.5%); }
+  100% { transform: translate(1.5%, -1%); }
+}
+
+@keyframes kit-blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.kit-blink { animation: kit-blink 1.1s steps(1) infinite; }
+
+/* 索引轨里"当前项"的呼吸光 */
+@keyframes kit-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+.kit-pulse { animation: kit-pulse 2.4s ease-in-out infinite; }
+
+/* 缓慢下扫的检索光带 */
+@keyframes kit-sweep {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(1200%); opacity: 0; }
+}
+.kit-sweep { animation: kit-sweep 6.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+/* 走马灯 */
+@keyframes kit-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.kit-marquee { animation: kit-marquee 44s linear infinite; }
+
+/* 细滚动条：索引轨里那条 22 行的名录需要它才不显得笨重 */
+.kit-scroll { scrollbar-width: thin; scrollbar-color: rgba(160,128,48,0.35) transparent; }
+.kit-scroll::-webkit-scrollbar { width: 3px; }
+.kit-scroll::-webkit-scrollbar-track { background: transparent; }
+.kit-scroll::-webkit-scrollbar-thumb { background: rgba(160,128,48,0.32); }
+.kit-scroll::-webkit-scrollbar-thumb:hover { background: rgba(200,160,67,0.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .kit-blink, .kit-pulse, .kit-sweep, .kit-marquee { animation: none !important; }
+}

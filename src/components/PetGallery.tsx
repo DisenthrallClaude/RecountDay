@@ -287,8 +287,11 @@ export default function PetGallery({ onBack }: Props) {
         <div className="absolute inset-0" style={{
           background: "radial-gradient(ellipse at 50% 40%, rgba(20,16,12,0.6) 0%, #0a0806 70%)"
         }} />
+        {/* 这里原本写死了 "/textures/parchment.jpg"。项目部署在子路径下时
+            （GitHub Pages 的 /<repo>/、本地预览的 /raw/…）这张底纹会 404，
+            背景直接塌成一块纯色。统一走 assetUrl。 */}
         <div className="absolute inset-0 opacity-30" style={{
-          backgroundImage: "url('/textures/parchment.jpg')",
+          backgroundImage: `url('${assetUrl("textures/parchment.jpg")}')`,
           mixBlendMode: "overlay",
         }} />
       </div>
@@ -449,65 +452,97 @@ export default function PetGallery({ onBack }: Props) {
         )}
       </AnimatePresence>
 
-      {/* 底部神兽切换栏 - 灵宠列表 */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 px-8 py-5">
-        <div
-          className="flex items-center justify-center gap-2 overflow-x-auto pb-2"
-          style={{ scrollbarWidth: "none" }}
-        >
+      {/* ══ 左侧契约名录 ══
+          原本是一排贴在屏幕最下沿的圆形按钮，只显示名字的第一个字，
+          「白」「飞」「夫」「九」这样孤零零一个字，认不出是谁；
+          而且它压在模型脚下，正好挡住召唤阵。
+          改成左侧竖排名录：编号 + 全名 + 称号，一屏看全十只，
+          与势力分布那一屏用同一套语言。 */}
+      <motion.aside
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className="absolute left-0 top-[84px] bottom-6 z-20 w-[212px] hidden md:flex flex-col px-3"
+      >
+        <div className="flex items-baseline justify-between mb-2">
+          <span className="font-cinzel text-[8px] tracking-[0.36em] text-[#4a4030]">CONTRACTS</span>
+          <span className="text-[9px] tracking-[0.18em] text-[#4a4030]" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {String(selectedIdx + 1).padStart(2, "0")} / {BEASTS.length}
+          </span>
+        </div>
+        <ul className="kit-scroll flex-1 min-h-0 overflow-y-auto space-y-[1px] pr-1">
           {BEASTS.map((beast, i) => {
-            const isActive = i === selectedIdx;
+            const on = i === selectedIdx;
+            return (
+              <li key={beast.key}>
+                <button
+                  onClick={() => handleSelect(i)}
+                  onMouseEnter={handleHover}
+                  className="group flex w-full items-center gap-2 py-[6px] pl-1 pr-2 text-left transition-colors"
+                  style={{ background: on ? `${beast.glow}12` : "transparent" }}
+                >
+                  <span
+                    className="h-px shrink-0 transition-all duration-500"
+                    style={{
+                      width: on ? 20 : 7,
+                      background: on ? beast.color : "rgba(150,138,110,0.3)",
+                      boxShadow: on ? `0 0 6px ${beast.glow}` : "none",
+                    }}
+                  />
+                  <span
+                    className="shrink-0 font-cinzel text-[9px] tracking-[0.16em] transition-colors"
+                    style={{ color: on ? beast.color : "#4a4030", fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="block font-caoshu text-[15px] leading-tight transition-all duration-300"
+                      style={{
+                        color: on ? beast.color : "#8a7f6a",
+                        textShadow: on ? `0 0 10px ${beast.glow}70` : "none",
+                        transform: on ? "translateX(3px)" : "none",
+                      }}
+                    >
+                      {beast.name}
+                    </span>
+                    <span
+                      className="block font-cormorant text-[10px] italic leading-tight transition-colors"
+                      style={{ color: on ? "#8a7a5c" : "#4a4438" }}
+                    >
+                      {beast.title}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="pt-2 font-cinzel text-[8px] tracking-[0.28em] text-[#3f382c]">
+          DRAG 旋转 · SCROLL 缩放
+        </div>
+      </motion.aside>
+
+      {/* 窄屏保留一条横向切换轨 */}
+      <div className="md:hidden absolute bottom-0 left-0 right-0 z-20 px-5 py-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+          {BEASTS.map((beast, i) => {
+            const on = i === selectedIdx;
             return (
               <button
                 key={beast.key}
                 onClick={() => handleSelect(i)}
-                onMouseEnter={handleHover}
-                className="group relative flex-shrink-0 transition-all duration-300"
+                className="shrink-0 px-2.5 py-1 font-caoshu text-[13px] transition-all"
                 style={{
-                  width: isActive ? "64px" : "44px",
-                  height: isActive ? "64px" : "44px",
+                  border: `1px solid ${on ? beast.color : "#3a342a"}`,
+                  color: on ? beast.color : "#6a5418",
+                  background: on ? `${beast.glow}18` : "rgba(10,8,6,0.6)",
                 }}
               >
-                <div
-                  className="w-full h-full rounded-full border flex items-center justify-center transition-all"
-                  style={{
-                    borderColor: isActive ? beast.color : "#3a342a",
-                    background: isActive
-                      ? `radial-gradient(circle, ${beast.glow}30 0%, transparent 80%)`
-                      : "rgba(10,8,6,0.6)",
-                    boxShadow: isActive ? `0 0 15px ${beast.glow}50` : "none",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  <span
-                    className="font-caoshu transition-all"
-                    style={{
-                      fontSize: isActive ? "18px" : "13px",
-                      color: isActive ? beast.color : "#6a5418",
-                      textShadow: isActive ? `0 0 8px ${beast.glow}` : "none",
-                    }}
-                  >
-                    {beast.name[0]}
-                  </span>
-                </div>
-                {/* 激活指示器 */}
-                {isActive && (
-                  <motion.div
-                    layoutId="active-beast"
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                    style={{ background: beast.color }}
-                  />
-                )}
+                {beast.name}
               </button>
             );
           })}
-        </div>
-
-        {/* 操作提示 */}
-        <div className="text-center mt-2">
-          <span className="font-cinzel text-[9px] text-[#4a4030] tracking-[0.3em]">
-            DRAG TO ROTATE · SCROLL TO ZOOM
-          </span>
         </div>
       </div>
     </div>

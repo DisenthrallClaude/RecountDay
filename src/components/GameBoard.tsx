@@ -13,7 +13,8 @@ import { playSound } from "./MainMenu";
 import BattleEffects from "./BattleEffects";
 import CardFlight from "./CardFlight";
 import FloatingNotices from "./FloatingNotices";
-import BurnAway from "./BurnAway";
+import PaperBurn from "./PaperBurn";
+import { TypeOut } from "./Kit";
 import { SEAT_ANCHOR } from "./CardFlight";
 import { getDuration, getEffectConfig, type PerfTier } from "./CardEffectConfig";
 import { AudioManager } from "../audio/AudioManager";
@@ -1624,9 +1625,9 @@ function WinnerScreen({ onExit }: { onExit: () => void }) {
    两个关键点：
    1) 真正的牛皮纸：暖褐底 + feTurbulence 纤维噪点 + 做旧茶渍与折痕，
       而不是原来那块半透明的深灰玻璃面板。
-   2) 自焚：关闭不是淡出，而是一张纸被点燃 ——
-      焦痕由下而上啃食（湍流位移遮罩，边缘不规则），
-      火线沿焦痕游走，灰烬向上飘散，最后什么都不剩。
+   2) 自焚：关闭不是淡出，而是一张纸被点燃。
+      焚毁演出整体交给 PaperBurn —— 火从右下角那一点开始向外吃，
+      洞、焦痕、火舌共用同一条湍流边界，最后连灰都不剩。
       密令阅后即焚，正符合它的身份。
    ──────────────────────────────────────────────────────────────── */
 function FactionParchment({ factionName, factionCategory, winCondition, quote, onClose }: {
@@ -1638,17 +1639,15 @@ function FactionParchment({ factionName, factionCategory, winCondition, quote, o
 }) {
   const cat = CATEGORY_META[factionCategory];
   const [burning, setBurning] = useState(false);
-  const maskId = useMemo(() => `burnmask-${Math.floor(Math.random() * 1e6)}`, []);
+  // 悬停"阅后即焚"时右下角先阴燃起来：点火之前就给出即将发生什么的预告
+  const [primed, setPrimed] = useState(false);
 
-  // 点火 → 播放焚毁演出 → 真正卸载
+  // 点火 → 播放焚毁演出 → 演出结束由 PaperBurn 回调卸载
   const ignite = useCallback(() => {
     if (burning) return;
     setBurning(true);
     AudioManager.playSfx("discard", { volume: 0.85 });
-    // 之前 1.15s 一闪而过，看不清"烧"的过程。放慢到 2.8s，
-    // 让火线有时间从右下角一路啃到左上角。
-    window.setTimeout(onClose, 2800);
-  }, [burning, onClose]);
+  }, [burning]);
 
   return (
     <motion.div
@@ -1659,38 +1658,12 @@ function FactionParchment({ factionName, factionCategory, winCondition, quote, o
       className="absolute z-30"
       style={{ left: "12px", top: "96px", width: "300px", maxWidth: "calc(100vw - 24px)" }}
     >
-      {/* 焚毁遮罩：湍流位移让侵蚀边缘呈现不规则焦痕，而不是一条平整的直线 */}
-      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
-        <defs>
-          <filter id={`${maskId}-rough`}>
-            <feTurbulence type="fractalNoise" baseFrequency="0.028 0.05" numOctaves="4" seed="7" result="n" />
-            <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-          <mask id={maskId} maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
-            <rect x="0" y="0" width="1" height="1" fill="white" />
-            {/* 焦痕沿对角线从右下角吞噬。
-                旋转 -38° 与 BurnAway 的火线保持同一角度，
-                火在哪儿烧，纸就在哪儿消失。 */}
-            <motion.rect
-              x="-0.9"
-              width="2.8"
-              height="2.4"
-              fill="black"
-              filter={`url(#${maskId}-rough)`}
-              style={{ transformBox: "fill-box", transformOrigin: "center" }}
-              initial={{ y: 1.45, rotate: -38 }}
-              animate={burning ? { y: -1.75, rotate: -38 } : { y: 1.45, rotate: -38 }}
-              transition={{ duration: 2.35, ease: [0.32, 0, 0.62, 1] }}
-            />
-          </mask>
-        </defs>
-      </svg>
-
-      <motion.div
-        className="relative"
-        style={{ mask: `url(#${maskId})`, WebkitMask: `url(#${maskId})` }}
-        animate={burning ? { filter: "brightness(1.12) contrast(1.08)" } : {}}
-        transition={{ duration: 1.1 }}
+      <PaperBurn
+        active={burning}
+        origin="bottom-right"
+        durationMs={3000}
+        density={92}
+        onFinished={onClose}
       >
         <div
           className="relative"
@@ -1728,6 +1701,17 @@ function FactionParchment({ factionName, factionCategory, winCondition, quote, o
             style={{ background: `radial-gradient(ellipse at 50% 0%, ${cat.color}, transparent 70%)` }}
           />
 
+          {/* 悬停即焚按钮时，右下角先透出一点将燃未燃的暗红 */}
+          <div
+            className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+            style={{
+              opacity: primed && !burning ? 1 : 0,
+              background:
+                "radial-gradient(ellipse 42% 34% at 97% 96%, rgba(190,70,18,0.42), rgba(120,36,8,0.14) 46%, transparent 72%)",
+              mixBlendMode: "multiply",
+            }}
+          />
+
           <div className="relative px-4 pt-4 pb-4">
             <div className="flex items-center gap-2 mb-2.5">
               <FactionIcon category={factionCategory} size={13} color="#4a2f10" />
@@ -1735,13 +1719,21 @@ function FactionParchment({ factionName, factionCategory, winCondition, quote, o
                 {cat.label.toUpperCase()} · ORDO
               </span>
               <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, rgba(74,47,16,0.5), transparent)" }} />
+              {/* 火漆封缄：一枚已被挑开的印，暗示这封密令只读一次 */}
+              <span
+                className="w-3.5 h-3.5 rounded-full shrink-0"
+                style={{
+                  background: "radial-gradient(circle at 34% 30%, #a8321e, #5c1408 72%)",
+                  boxShadow: "inset 0 -1px 2px rgba(0,0,0,0.5), 0 1px 1px rgba(255,240,205,0.25)",
+                }}
+              />
             </div>
 
             <h3
               className="font-caoshu text-[30px] leading-none tracking-[0.14em]"
               style={{ color: "#2a1a08", textShadow: "0 1px 0 rgba(255,240,205,0.35)" }}
             >
-              {factionName}
+              <TypeOut text={factionName} perChar={72} delay={180} />
             </h3>
             <div className="mt-2 h-[1.5px]" style={{ background: "linear-gradient(90deg, rgba(50,30,10,0.62), rgba(50,30,10,0.12) 65%, transparent)" }} />
 
@@ -1770,21 +1762,31 @@ function FactionParchment({ factionName, factionCategory, winCondition, quote, o
               </span>
               <button
                 onClick={ignite}
+                onMouseEnter={() => { setPrimed(true); AudioManager.playSfx("hover", { volume: 0.4 }); }}
+                onMouseLeave={() => setPrimed(false)}
                 disabled={burning}
+                title="点燃后不可恢复"
                 className="group relative flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] transition-all hover:scale-[1.04] active:scale-95 disabled:opacity-50"
-                style={{ background: "rgba(122,30,22,0.14)", border: "1px solid rgba(122,30,22,0.45)" }}
+                style={{
+                  background: primed ? "rgba(150,40,24,0.24)" : "rgba(122,30,22,0.14)",
+                  border: "1px solid rgba(122,30,22,0.45)",
+                }}
               >
-                <IconFlame size={11} color="#8a2a14" />
-                <span className="text-[10.5px] tracking-[0.16em]" style={{ color: "#7a2010" }}>阅后即焚</span>
+                <motion.span
+                  animate={primed && !burning ? { rotate: [-4, 4, -3, 3, -4], y: [0, -0.6, 0] } : { rotate: 0, y: 0 }}
+                  transition={{ duration: 0.5, repeat: primed && !burning ? Infinity : 0 }}
+                  className="flex"
+                >
+                  <IconFlame size={11} color={primed ? "#b8391a" : "#8a2a14"} />
+                </motion.span>
+                <span className="text-[10.5px] tracking-[0.16em]" style={{ color: "#7a2010" }}>
+                  {burning ? "焚毁中…" : "阅后即焚"}
+                </span>
               </button>
             </div>
           </div>
         </div>
-
-      </motion.div>
-
-      {/* 火焰与余烬画在遮罩之外 —— 否则会被同一张焚毁遮罩一起裁掉 */}
-      <BurnAway active={burning} durationMs={2400} density={64} />
+      </PaperBurn>
     </motion.div>
   );
 }

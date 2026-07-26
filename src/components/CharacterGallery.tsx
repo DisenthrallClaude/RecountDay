@@ -316,8 +316,8 @@ const RELATION_META: Record<
   },
   rival: {
     label: "敌对",
-    color: "#4a4440",
-    lit: "#d8d2ca",
+    color: "#7a3128",
+    lit: "#e8735c",
     en: "RIVAL",
     width: 0.3,
     dash: "1.6 1.5",
@@ -325,8 +325,8 @@ const RELATION_META: Record<
   },
   ally: {
     label: "同盟",
-    color: "#5c5750",
-    lit: "#c3bdb3",
+    color: "#39685c",
+    lit: "#6fc2aa",
     en: "ALLY",
     width: 0.26,
     dash: "",
@@ -334,8 +334,8 @@ const RELATION_META: Record<
   },
   blood: {
     label: "血缘",
-    color: "#3e3a36",
-    lit: "#a9a29a",
+    color: "#8a3a44",
+    lit: "#e5808f",
     en: "BLOOD",
     width: 0.4,
     dash: "",
@@ -343,8 +343,8 @@ const RELATION_META: Record<
   },
   master: {
     label: "师徒",
-    color: "#514c46",
-    lit: "#b5aea5",
+    color: "#7a6127",
+    lit: "#f4cf72",
     en: "MASTER",
     width: 0.26,
     dash: "0.6 1.7",
@@ -352,8 +352,8 @@ const RELATION_META: Record<
   },
   hidden: {
     label: "隐藏",
-    color: "#332f2c",
-    lit: "#8e877f",
+    color: "#4d3a6b",
+    lit: "#ab8ede",
     en: "HIDDEN",
     width: 0.24,
     dash: "0.5 2.0",
@@ -378,7 +378,7 @@ const ALL_TYPES_ON: TypeToggle = {
 
 /** 羁绊强度 → 线宽倍率 / 基础透明度 */
 const STRENGTH_WIDTH: Record<1 | 2 | 3, number> = { 1: 0.72, 2: 1.08, 3: 1.62 };
-const STRENGTH_OPACITY: Record<1 | 2 | 3, number> = { 1: 0.34, 2: 0.58, 3: 0.86 };
+const STRENGTH_OPACITY: Record<1 | 2 | 3, number> = { 1: 0.46, 2: 0.7, 3: 0.94 };
 const STRENGTH_LABEL: Record<1 | 2 | 3, string> = { 1: "I", 2: "II", 3: "III" };
 
 const FACTION_RING: FactionCategory[] = [
@@ -878,16 +878,28 @@ const Backdrop = memo(function Backdrop({ reduce }: { reduce: boolean }) {
             "radial-gradient(ellipse 120% 90% at 50% 42%, rgba(27,22,17,0.72) 0%, rgba(14,11,8,0.8) 44%, rgba(6,4,2,0.9) 78%, rgba(3,2,1,0.94) 100%)",
         }}
       />
-      {/* 阵法底图：整屏走黑白灰，所以 grayscale 掉只留纹理与构图。
-          提亮 + 增对比，让金线真的读得出来；透明度足以看清，又压得住不抢节点。 */}
+      {/* 阵法底图。
+          之前它按 opacity 0.55 + brightness 1.7 压在这里，结果是喧宾夺主：
+          那张图本身就是一幅**满是细线的曼陀罗**，明度和线宽都跟星辰与丝线
+          处在同一档，于是 24 颗星、42 条丝线全部沉进它的线阵里 ——
+          这正是这一屏"看起来什么都有、其实什么都看不清"的根源。
+          底图退到 0.16，只负责给出圆形构图与纹理；主角让给星辰。 */}
       <div
         className="absolute inset-0"
         style={{
           backgroundImage: `url(${assetUrl("images/formation_bg.jpg")})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          filter: "grayscale(1) brightness(1.7) contrast(1.3)",
-          opacity: 0.55,
+          filter: "grayscale(1) brightness(1.25) contrast(1.15)",
+          opacity: 0.16,
+        }}
+      />
+      {/* 中心压暗：星辰与丝线集中在中央，那里必须是全屏最干净的一块 */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 62% 58% at 50% 47%, rgba(3,2,1,0.72) 0%, rgba(3,2,1,0.34) 52%, transparent 78%)",
         }}
       />
       {/* 星云团 */}
