@@ -53,7 +53,6 @@ export function freshStats(initialMax: number = 4): PlayerStats {
     damagedSeats: new Set(),
     damagedEliminated: new Set(),
     viewedFullHandOf: new Set(),
-    initialOpponents: new Set(),
     equipAcquiredCount: 0,
     recoveredFromLowCount: 0,
     usedActiveSkillEver: false,
@@ -163,7 +162,7 @@ export function drawCards(state: GameState, seat: number, n: number) {
 export function discardRandomHand(state: GameState, seat: number): CardDef | null {
   const p = state.players[seat];
   if (!p.hand.length) return null;
-  const idx = Math.floor(Math.random() * p.hand.length);
+  const idx = Math.floor(rand() * p.hand.length);
   const [c] = p.hand.splice(idx, 1);
   state.discardPile.push(c);
   return c;
@@ -337,3 +336,4 @@ export function maybeDeclareWinner(state: GameState): boolean {
 // local seatDistance re-export for targetableBy (avoids circular import concerns)
 import { seatDistance } from "../engine/utils";
 import { evaluateWinners } from "../engine/win";
+import { rand } from "../engine/rng";

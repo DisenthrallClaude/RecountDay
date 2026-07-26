@@ -17,6 +17,7 @@ import { buildInitialState } from "../store/setup";
 import { startTurn } from "../store/turnFlow";
 import { buildFullDeck } from "../data/cards";
 import { setPaceFactor } from "../store/helpers";
+import { seedRng } from "../engine/rng";
 
 // 关闭所有演出用的 sleep，否则一局要真实等待几十秒
 setPaceFactor(0);
@@ -37,8 +38,16 @@ function countAllCards(s: GameState): number {
   return n;
 }
 
-/** 跑一整局，返回终局状态 */
-async function playOneGame(characterId: number): Promise<GameState> {
+/**
+ * 跑一整局，返回终局状态。
+ *
+ * seed 是必填的：这个文件里的断言（牌张守恒、篇幅不越界、回合数区间）
+ * 覆盖的是只有在真实流程里才会浮现的问题，而这类问题往往几十局才撞一次。
+ * 如果随机不可复现，那么失败一次 = 什么都得不到：既定位不了，也验证不了
+ * 修好没有。播了种之后，失败信息里的 seed 就是一份完整的复现步骤。
+ */
+async function playOneGame(characterId: number, seed: number): Promise<GameState> {
+  seedRng(seed);
   let state = buildInitialState({ characterId });
   // 让 0 号位也由 AI 接管，这样无需 UI 即可自动推进
   state = produce(state, (d: GameState) => {
@@ -63,10 +72,13 @@ describe("四人自动对局 —— 全流程烟雾测试", () => {
 
       for (let game = 0; game < 6; game++) {
         const characterId = (game % 24) + 1;
-        const final = await playOneGame(characterId);
+        // 固定的种子序列：CI 上每次跑的是同一批对局，红了就一定能复现
+        const seed = 0x5eed0000 + game;
+        const final = await playOneGame(characterId, seed);
+        const where = `第${game + 1}局(seed=${seed}, 角色${characterId})`;
 
         // 1) 必须真的分出胜负，而不是卡在某个回合
-        expect(final.winner, `第${game + 1}局没有产生结果`).not.toBeNull();
+        expect(final.winner, `${where} 没有产生结果`).not.toBeNull();
         seen.add(final.winner!.text);
 
         // 2) 牌张守恒：任何区域的牌加起来应当等于牌库总数。
@@ -74,19 +86,19 @@ describe("四人自动对局 —— 全流程烟雾测试", () => {
         const total = countAllCards(final);
         expect(
           total,
-          `第${game + 1}局牌张不守恒：期望 ${DECK_SIZE}，实得 ${total}`,
+          `${where} 牌张不守恒：期望 ${DECK_SIZE}，实得 ${total}`,
         ).toBe(DECK_SIZE);
 
         // 3) 篇幅不得越界
         for (const p of final.players) {
-          expect(p.fragments, `座位${p.seat}篇幅为负`).toBeGreaterThanOrEqual(0);
+          expect(p.fragments, `${where} 座位${p.seat}篇幅为负`).toBeGreaterThanOrEqual(0);
           expect(
             p.fragments,
-            `座位${p.seat}篇幅超过上限`,
+            `${where} 座位${p.seat}篇幅超过上限`,
           ).toBeLessThanOrEqual(p.maxFragments);
           if (!p.alive) {
-            expect(p.fragments, "已淘汰玩家篇幅应为0").toBe(0);
-            expect(p.hand.length, "已淘汰玩家不应留有手牌").toBe(0);
+            expect(p.fragments, `${where} 已淘汰玩家篇幅应为0`).toBe(0);
+            expect(p.hand.length, `${where} 已淘汰玩家不应留有手牌`).toBe(0);
           }
         }
 
@@ -96,8 +108,8 @@ describe("四人自动对局 —— 全流程烟雾测试", () => {
 
         // 5) 回合数应当落在一个合理区间：太少说明提前崩溃，
         //    太多说明胜利条件够不着、游戏拖不完。
-        expect(final.round).toBeGreaterThan(1);
-        expect(final.round).toBeLessThan(400);
+        expect(final.round, `${where} 回合数异常偏少，疑似提前崩溃`).toBeGreaterThan(1);
+        expect(final.round, `${where} 回合数异常偏多，疑似胜利条件够不着`).toBeLessThan(400);
       }
 
       // 六局不应该全部走同一条结算路径
@@ -113,7 +125,8 @@ describe("四人自动对局 —— 全流程烟雾测试", () => {
       let lastSurvivorWins = 0;
 
       for (let game = 0; game < 10; game++) {
-        const final = await playOneGame((game % 24) + 1);
+        const seed = 0x5eed1000 + game;
+        const final = await playOneGame((game % 24) + 1, seed);
         if (!final.winner) continue;
         if (final.winner.text.includes("隐藏胜利条件")) factionWins++;
         else if (final.winner.text.includes("最后存活者")) lastSurvivorWins++;
@@ -128,5 +141,54 @@ describe("四人自动对局 —— 全流程烟雾测试", () => {
       expect(factionWins, "10 局中没有任何阵营达成隐藏胜利条件").toBeGreaterThan(0);
     },
     180_000,
+  );
+});
+
+/* ════════════════════════════════════════════════════════════════
+   可复现性本身也要被测
+   ----------------------------------------------------------------
+   上面那些断言之所以有价值，前提是"同一个 seed 必然重放出同一局"。
+   一旦有人在逻辑层重新引入裸 Math.random()，这条前提就悄悄失效了，
+   而上面的用例照样会绿 —— 只是失败信息里的 seed 从此不再有意义。
+   所以这里显式地把前提钉住。
+   ════════════════════════════════════════════════════════════════ */
+describe("同一种子必须重放出完全相同的一局", () => {
+  /** 把终局压成一个可比较的指纹 */
+  const fingerprint = (s: GameState) =>
+    JSON.stringify({
+      round: s.round,
+      winner: s.winner?.text ?? null,
+      seats: s.winner?.seats ?? [],
+      deck: s.deck.length,
+      discard: s.discardPile.length,
+      players: s.players.map((p) => ({
+        seat: p.seat,
+        faction: p.factionId,
+        char: p.characterId,
+        frag: p.fragments,
+        alive: p.alive,
+        hand: p.hand.map((c) => c.key).join(","),
+        turns: p.ownTurnCount,
+      })),
+    });
+
+  it(
+    "两次以 seed=20260726 开局，终局状态逐字段一致",
+    async () => {
+      const a = fingerprint(await playOneGame(3, 20260726));
+      const b = fingerprint(await playOneGame(3, 20260726));
+      expect(b, "同一种子跑出了不同的对局 —— 逻辑层大概率又混进了裸 Math.random()").toBe(a);
+    },
+    120_000,
+  );
+
+  it(
+    "不同种子应当跑出不同的对局（否则说明种子根本没生效）",
+    async () => {
+      const a = fingerprint(await playOneGame(3, 111));
+      const b = fingerprint(await playOneGame(3, 222));
+      expect(b).not.toBe(a);
+    },
+    120_000,
   );
 });

@@ -20,8 +20,9 @@ import { getCharacter } from "../data/characters";
 import { FACTIONS } from "../data/factions";
 import type { GameState, PlayerState } from "../engine/types";
 import { seatDistance } from "../engine/utils";
-import { attackRangeOf, inAttackBand, skillUnlocked, targetableBy } from "./helpers";
+import { inAttackBand, skillUnlocked, targetableBy } from "./helpers";
 import { effectiveSkillCost } from "./skills";
+import { rand } from "../engine/rng";
 
 export type Difficulty = "easy" | "normal" | "hard";
 
@@ -380,7 +381,7 @@ export function chooseAction(state: GameState, seat: number, difficulty: Difficu
   if (!me.alive) return { kind: "pass", score: 0, why: "已出局" };
   const bias = factionBias(me);
   const noise = NOISE[difficulty];
-  const jitter = () => (Math.random() - 0.5) * 2 * noise;
+  const jitter = () => (rand() - 0.5) * 2 * noise;
 
   const options: Action[] = [];
 
@@ -445,7 +446,7 @@ export function shouldDefend(
   p += Math.min(0.2, Math.max(0, me.hand.length - 3) * 0.06);
   if (difficulty === "easy") p -= 0.2;
   else if (difficulty === "hard") p += 0.12;
-  return Math.random() < Math.max(0.05, Math.min(0.98, p));
+  return rand() < Math.max(0.05, Math.min(0.98, p));
 }
 
 /**
@@ -484,7 +485,7 @@ export function shouldCounter(
   const potiCount = me.hand.filter((c) => c.key === "poti").length;
   p += (potiCount - 1) * 0.15;
   void casterSeat;
-  return Math.random() < Math.max(0, Math.min(0.95, p));
+  return rand() < Math.max(0, Math.min(0.95, p));
 }
 
 /** 供技能/牌效果挑目标时使用：选威胁最高的合法目标 */
@@ -505,7 +506,7 @@ export function pickBestTarget(
     if (!p) continue;
     let v = threatOf(me, p);
     if (bias.preferTarget) v += bias.preferTarget(state, me, p);
-    v += (Math.random() - 0.5) * 2 * noise;
+    v += (rand() - 0.5) * 2 * noise;
     if (v > bestScore) { bestScore = v; bestSeat = c; }
   }
   return bestSeat;
@@ -514,8 +515,6 @@ export function pickBestTarget(
 /** 攻击范围提示，供 UI 与 AI 共用 */
 export function reachableSeats(state: GameState, seat: number): number[] {
   const me = state.players[seat];
-  const rng = attackRangeOf(me);
-  void rng;
   return state.players
     .filter((p) => p.alive && p.seat !== seat && inAttackBand(me, p))
     .map((p) => p.seat);

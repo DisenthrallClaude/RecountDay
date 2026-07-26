@@ -11,8 +11,47 @@ import { getCharacter } from "../data/characters";
  *  3. 阈值按实际对局长度校准：四人局通常在 24~32 个玩家回合内结束，
  *     因此需要"累计到 N"的条件必须在这个窗口内可达，且不能唾手可得。
  *  4. 终局类条件（存活到最后2人）必须真的构成博弈，不能被纯计时条件抢跑。
+ *
+ * 关于第 2 条 —— 它曾经被违反过四次
+ * ----------------------------------------------------------------------------
+ * 平衡校准把代码里的阈值调低了，卷宗上的文案却没跟着改：黑帆书库写着 5 张、
+ * 判定却是 4 张；锈字修道院写着 15 段、判定却是 12 段；远星的文案完全没提
+ * 那条防抢跑的篇幅门槛；纸鸢社的文案说"所有其他玩家"、判定其实只看当前存活的。
+ *
+ * 这在一个靠隐藏信息博弈的游戏里是实打实的伤害：玩家是**照着密令上的数字**
+ * 做规划的，数字不对，规划就是错的。
+ *
+ * 所以阈值现在集中在 WIN_THRESHOLDS 里，并且 win.test.ts 有一条测试会把
+ * factions.ts 文案里的数字抠出来跟这里逐一比对 —— 以后再想只改一边都会红。
  * ============================================================================
  */
+
+/**
+ * 需要在文案里露出的数值阈值。
+ * 改这里就必须同步改 factions.ts 的 win 文案，否则 win.test.ts 会失败。
+ */
+export const WIN_THRESHOLDS = {
+  /** 灰塔(1)：淘汰数 */
+  huitaKills: 2,
+  /** 白纸城(2)：自己的回合数 */
+  baizhichengTurns: 8,
+  /** 长夜档案馆(4)：累计获得畸变物件数 */
+  changyeAcquired: 3,
+  /** 黑帆书库(7)：累计从他人处夺得的手牌/畸变物张数 */
+  heifanTaken: 4,
+  /** 旧日读书会(10)：同时装备件数 */
+  jiuriEquipped: 3,
+  /** 锈字修道院(11)：累计恢复篇幅段数 */
+  xiuziHealed: 12,
+  /** 墨冢(16)：拾取残片数 */
+  mozhongResidue: 2,
+  /** 第七灯塔(17)：造成过伤害且最终被淘汰的玩家数 */
+  dengtaAssists: 2,
+  /** 迷途(18)：从低篇幅恢复到满的次数 */
+  mituRecoveries: 2,
+  /** 渡鸦邮局(20)：累计摸牌数 */
+  duyaDraws: 20,
+} as const;
 
 function aliveSeats(state: GameState): number[] {
   return state.players.filter((p) => p.alive).map((p) => p.seat);
@@ -44,16 +83,16 @@ export function checkFactionWin(state: GameState, p: PlayerState): boolean {
 
   switch (p.factionId) {
     case 1: // 灰塔：淘汰2名其他玩家
-      return p.stats.killedCount >= 2;
+      return p.stats.killedCount >= WIN_THRESHOLDS.huitaKills;
 
     case 2: // 白纸城：存活到自己的第8回合结束
-      return p.ownTurnCount >= 8;
+      return p.ownTurnCount >= WIN_THRESHOLDS.baizhichengTurns;
 
     case 3: // 镜湖议会：不以自己为使用者打出笔伐，且成为最后存活的2人之一
       return !p.stats.usedBifaAsUser && endgameLE2;
 
     case 4: // 长夜档案馆：累计获得3件畸变物（篡取或装备均计）
-      return p.stats.equipAcquiredCount >= 3;
+      return p.stats.equipAcquiredCount >= WIN_THRESHOLDS.changyeAcquired;
 
     case 5: // 焚稿人：淘汰当前篇幅最高的其他玩家
       return p.stats.factionFlags.has(5);
@@ -61,8 +100,8 @@ export function checkFactionWin(state: GameState, p: PlayerState): boolean {
     case 6: // 第十三书签：淘汰1名玩家后存活到自己的下一回合结束
       return p.stats.factionFlags.has(6);
 
-    case 7: // 黑帆书库：累计从其他玩家处获得4张手牌或畸变物
-      return p.stats.handsOrEquipTaken >= 4;
+    case 7: // 黑帆书库：累计从其他玩家处获得手牌或畸变物
+      return p.stats.handsOrEquipTaken >= WIN_THRESHOLDS.heifanTaken;
 
     case 8: // 无名海岸：淘汰守序阵营的1名玩家
       return p.stats.factionFlags.has(8);
@@ -75,15 +114,19 @@ export function checkFactionWin(state: GameState, p: PlayerState): boolean {
     }
 
     case 10: // 旧日读书会：同时装备3件畸变物
-      return equippedCount(p) >= 3;
+      return equippedCount(p) >= WIN_THRESHOLDS.jiuriEquipped;
 
-    case 11: // 锈字修道院：累计恢复篇幅达到12段
-      return p.stats.totalHealed >= 12;
+    case 11: // 锈字修道院：累计恢复篇幅
+      return p.stats.totalHealed >= WIN_THRESHOLDS.xiuziHealed;
 
     case 12: {
-      // 纸鸢社：查看过所有"当前仍存活的其他玩家"的全部手牌各至少1次。
-      // initialOpponents 会在有人淘汰时同步剔除，避免出现
-      // "看了2个人 → 死了1个 → 阈值降到2 → 未看过的人被跳过"的误判。
+      // 纸鸢社：查看过**当前仍存活的**其他玩家的全部手牌各至少1次。
+      //
+      // 这里刻意只算存活者：若以开局对手为准，那么一个早早被淘汰、
+      // 你根本没机会窥牌的人就会把条件永久锁死。代价是"看了 A、B，C 死了"
+      // 也算达成 —— 两害相权，取可达的那个。
+      // （曾有一个 initialOpponents 字段声称在维持固定分母，但代码从来
+      //   没读过它，已随本次清理删除。）
       const need = alivePlayers(state).filter((o) => o.seat !== p.seat).map((o) => o.seat);
       if (need.length === 0) return false;
       return need.every((s) => p.stats.viewedFullHandOf.has(s));
@@ -99,19 +142,19 @@ export function checkFactionWin(state: GameState, p: PlayerState): boolean {
       return p.stats.factionFlags.has(15);
 
     case 16: // 墨冢：拾取2个叙事残片
-      return p.stats.residueCount >= 2;
+      return p.stats.residueCount >= WIN_THRESHOLDS.mozhongResidue;
 
     case 17: // 第七灯塔：对2名被淘汰的玩家均造成过至少1段篇幅伤害（助攻即可）
-      return p.stats.damagedEliminated.size >= 2;
+      return p.stats.damagedEliminated.size >= WIN_THRESHOLDS.dengtaAssists;
 
     case 18: // 迷途：从2段及以下篇幅恢复到满篇幅2次
-      return p.stats.recoveredFromLowCount >= 2;
+      return p.stats.recoveredFromLowCount >= WIN_THRESHOLDS.mituRecoveries;
 
     case 19: // 失语者同盟：不主动使用技能且不装备任何畸变物，存活到最后2人
       return !p.stats.usedActiveSkillEver && !p.stats.everEquippedAberration && endgameLE2;
 
     case 20: // 渡鸦邮局：累计从牌堆摸牌数达到20张
-      return p.stats.drawnTotal >= 20;
+      return p.stats.drawnTotal >= WIN_THRESHOLDS.duyaDraws;
 
     case 21: // 纸船会：直接淘汰1名玩家时，篇幅不低于最大篇幅的50%
       return p.stats.factionFlags.has(21);

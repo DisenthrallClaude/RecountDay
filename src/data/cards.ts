@@ -1,4 +1,5 @@
 import { assetUrl } from "../utils/assetUrl";
+import { shuffled } from "../engine/rng";
 export type Suit = "spade" | "heart" | "club" | "diamond";
 export const SUIT_SYMBOL: Record<Suit, string> = { spade: "♠", heart: "♥", club: "♣", diamond: "♦" };
 export const SUIT_COLOR: Record<Suit, string> = {
@@ -107,11 +108,10 @@ export function buildFullDeck(): CardDef[] {
   return deck;
 }
 
+/**
+ * 洗牌。走 engine/rng 的统一随机源而不是 Math.random —— 否则整副牌的顺序
+ * 无法复现，simulation.test.ts 的偶发失败就永远查不下去。
+ */
 export function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+  return shuffled(arr);
 }

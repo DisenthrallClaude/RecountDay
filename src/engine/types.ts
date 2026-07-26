@@ -28,8 +28,6 @@ export interface PlayerStats {
   damagedEliminated: Set<number>;
   /** 真正看过全部手牌的座位（单张窥牌不计）—— 纸鸢社(12) */
   viewedFullHandOf: Set<number>;
-  /** 开局时的对手座位集合，纸鸢社据此判定"所有其他玩家" */
-  initialOpponents: Set<number>;
   equipAcquiredCount: number; // 长夜档案馆
   recoveredFromLowCount: number; // 迷途
   usedActiveSkillEver: boolean;

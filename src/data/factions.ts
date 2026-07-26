@@ -29,13 +29,13 @@ export const FACTIONS: FactionDef[] = [
   // SHADOW 暗影
   { id: 5, name: "焚稿人", category: "SHADOW", image: assetUrl("images/factions/fengaoren.jpg"), quote: "有些火焰不是为了温暖，而是为了净化。", intro: "专门销毁和封印危险的叙事片段和畸变物，行事激进。", win: "淘汰当前篇幅最高的其他玩家。" },
   { id: 6, name: "第十三书签", category: "SHADOW", image: assetUrl("images/factions/dishisanshuqian.jpg"), quote: "第十三页的书签，总是翻到最不该看的那一章。", intro: "标记世界叙事中的关键节点和人物，也接受暗杀委托。", win: "淘汰1名玩家后存活到自己的下一回合结束。" },
-  { id: 7, name: "黑帆书库", category: "SHADOW", image: assetUrl("images/factions/heifanshuku.jpg"), quote: "知识不问出处，只问谁能读懂。", intro: "像海盗一样掠夺和收集叙事知识，收藏大量禁书和秘密知识。", win: "累计从其他玩家处获得5张手牌或畸变物。" },
+  { id: 7, name: "黑帆书库", category: "SHADOW", image: assetUrl("images/factions/heifanshuku.jpg"), quote: "知识不问出处，只问谁能读懂。", intro: "像海盗一样掠夺和收集叙事知识，收藏大量禁书和秘密知识。", win: "累计从其他玩家处获得4张手牌或畸变物。" },
   { id: 8, name: "无名海岸", category: "SHADOW", image: assetUrl("images/factions/wuminghaian.jpg"), quote: "名字是别人给的，海岸是自己选的。", intro: "收养流落在外或被通缉的叙事者，不问来处不问过往。", win: "淘汰守序阵营的1名玩家。" },
   // SEEKER 求知
-  { id: 9, name: "远星", category: "SEEKER", image: assetUrl("images/factions/yuanxing.jpg"), quote: "星星之所以远，是因为有人还没走到。", intro: "致力于探索叙事边界和未知领域的组织。", win: "叙事等级达到四阶时仍存活。" },
+  { id: 9, name: "远星", category: "SEEKER", image: assetUrl("images/factions/yuanxing.jpg"), quote: "星星之所以远，是因为有人还没走到。", intro: "致力于探索叙事边界和未知领域的组织。", win: "叙事等级达到四阶时仍存活，且篇幅不低于最大篇幅的一半。" },
   { id: 10, name: "旧日读书会", category: "SEEKER", image: assetUrl("images/factions/jiuridushuhui.jpg"), quote: "旧书重读，不是为了怀旧，是为了找回丢失的页码。", intro: "研究古老叙事，试图恢复旧世界。", win: "同时装备3件畸变物。" },
-  { id: 11, name: "锈字修道院", category: "SEEKER", image: assetUrl("images/factions/xiuzixiudao.jpg"), quote: "锈迹是时间的批注，修道院是时间的编辑。", intro: "守护古老叙事，修复破损叙事遗迹和文本。", win: "累计恢复篇幅达到15段。" },
-  { id: 12, name: "纸鸢社", category: "SEEKER", image: assetUrl("images/factions/zhiyuanshe.jpg"), quote: "飞得最高的纸鸢，看到的风景也最孤独。", intro: "像风筝一样收集和传递高空远方的信息。", win: "查看过所有其他玩家的全部手牌至少各1次。" },
+  { id: 11, name: "锈字修道院", category: "SEEKER", image: assetUrl("images/factions/xiuzixiudao.jpg"), quote: "锈迹是时间的批注，修道院是时间的编辑。", intro: "守护古老叙事，修复破损叙事遗迹和文本。", win: "累计恢复篇幅达到12段。" },
+  { id: 12, name: "纸鸢社", category: "SEEKER", image: assetUrl("images/factions/zhiyuanshe.jpg"), quote: "飞得最高的纸鸢，看到的风景也最孤独。", intro: "像风筝一样收集和传递高空远方的信息。", win: "查看过所有存活对手的全部手牌至少各1次。" },
   // TRANSCENDENT 超然
   { id: 13, name: "白烛修会", category: "TRANSCENDENT", image: assetUrl("images/factions/baizhuxiuhui.jpg"), quote: "烛光摇曳时，叙事在倾听。", intro: "基于传统宗教但融入叙事元素，认为叙事是神圣的。", win: "全程篇幅不低于初始最大篇幅的50%，且成为最后存活的2人之一。" },
   { id: 14, name: "留白", category: "TRANSCENDENT", image: assetUrl("images/factions/liubai.jpg"), quote: "未写之处，自有天地。", intro: "主张在叙事中保持适度距离，不过度干预世界。", win: "不主动使用角色技能，存活到最后2人。" },

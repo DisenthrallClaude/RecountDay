@@ -4,6 +4,7 @@ import { equipAt } from "../engine/utils";
 import { pickBestTarget, readDifficulty, shouldCounter, shouldDefend } from "./ai";
 import type { SetFn, GetFn } from "./helpers";
 import { applyDamageSync } from "./damage";
+import { rand } from "../engine/rng";
 
 // ---------------- Module-level resolver variables ----------------
 // These are live bindings: gameStore.ts imports them to resolve pending UI prompts.
@@ -127,7 +128,7 @@ export async function requestChoice(
 ): Promise<boolean> {
   const p = get().players[seat];
   if (!p.isHuman) {
-    return Promise.resolve(Math.random() < aiChance);
+    return Promise.resolve(rand() < aiChance);
   }
   return new Promise((resolve) => {
     choiceResolver = resolve;

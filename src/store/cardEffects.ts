@@ -1,3 +1,4 @@
+import { rand } from "../engine/rng";
 import type { CardDef } from "../data/cards";
 import { getCharacter } from "../data/characters";
 import type { GameState, PlayerState } from "../engine/types";
@@ -142,7 +143,7 @@ export async function performStrike(
                 };
               });
             })
-          : tgt.fragments <= 2 && Math.random() < 0.6;
+          : tgt.fragments <= 2 && rand() < 0.6;
         if (wantQuell) {
           let redirect = nearby[0].seat;
           if (tgt.isHuman && nearby.length > 1) {
@@ -151,7 +152,7 @@ export async function performStrike(
             );
             if (picked && picked.length) redirect = picked[0];
           } else if (!tgt.isHuman) {
-            redirect = nearby[Math.floor(Math.random() * nearby.length)].seat;
+            redirect = nearby[Math.floor(rand() * nearby.length)].seat;
           }
           set((s) => {
             const pl = s.players[targetSeat];
@@ -191,7 +192,7 @@ export async function performStrike(
     const atkNow = get().players[attackerSeat];
     const tgtNow = get().players[targetSeat];
     if (equipAt(atkNow, "weapon")?.key === "buying" && tgtNow.hand.length > 0) {
-      const peek = tgtNow.hand[Math.floor(Math.random() * tgtNow.hand.length)];
+      const peek = tgtNow.hand[Math.floor(rand() * tgtNow.hand.length)];
       const victimName = getCharacter(tgtNow.characterId).name;
       set((s) => {
         // 窥牌是私密情报：公共战报里只说"窥视发生了"，不公开具体牌名，
@@ -265,9 +266,9 @@ export async function performStrike(
             ? await requestChoice(set, get, targetSeat, "代价转嫁",
                 `你将受到${dmg}段篇幅伤害。是否消耗1段篇幅，将这份伤害转嫁给距离1以内的另一名玩家？`,
                 "转嫁", "自己承受", 0.5)
-            : victim.fragments <= 2 && Math.random() < 0.65;
+            : victim.fragments <= 2 && rand() < 0.65;
           if (want) {
-            const redirect = nearby[Math.floor(Math.random() * nearby.length)].seat;
+            const redirect = nearby[Math.floor(rand() * nearby.length)].seat;
             set((s) => {
               const pl = s.players[targetSeat];
               pl.fragments -= 1;
@@ -297,7 +298,7 @@ export async function performStrike(
       if (equipAt(atk, "weapon")?.key === "caizhi") {
         const equipEntries = Object.entries(tgt.equips).filter(([, v]) => v) as [string, CardDef][];
         if (equipEntries.length) {
-          const [slot, eq] = equipEntries[Math.floor(Math.random() * equipEntries.length)];
+          const [slot, eq] = equipEntries[Math.floor(rand() * equipEntries.length)];
           tgt.equips[slot as keyof PlayerState["equips"]] = undefined;
           s.discardPile.push({ ...eq });
           log(s, `${pName(atk)}的【裁纸利刃】弃置了${pName(tgt)}的【${eq.name}】！`, "skill");
@@ -596,7 +597,7 @@ export async function playCardInternal(
         const t = s.players[actualTarget];
         const equipEntries = Object.entries(t.equips).filter(([, v]) => v) as [string, CardDef][];
         if (equipEntries.length) {
-          const [slot, eq] = equipEntries[Math.floor(Math.random() * equipEntries.length)];
+          const [slot, eq] = equipEntries[Math.floor(rand() * equipEntries.length)];
           t.equips[slot as keyof PlayerState["equips"]] = undefined;
           s.discardPile.push({ ...eq });
           log(s, `${pName(pl)} 使用【旁注】，弃置了${pName(t)}的【${eq.name}】！`, "card");
@@ -637,9 +638,9 @@ export async function playCardInternal(
         const t = s.players[tgt];
         const equipEntries = Object.entries(t.equips).filter(([, v]) => v) as [string, CardDef][];
         // 有装备就按 40% 抢装备；若对方无手牌，则装备是唯一可抢的东西，必抢。
-        const stealEquip = equipEntries.length > 0 && (t.hand.length === 0 || Math.random() < 0.4);
+        const stealEquip = equipEntries.length > 0 && (t.hand.length === 0 || rand() < 0.4);
         if (stealEquip) {
-          const [slot, eq] = equipEntries[Math.floor(Math.random() * equipEntries.length)];
+          const [slot, eq] = equipEntries[Math.floor(rand() * equipEntries.length)];
           t.equips[slot as keyof PlayerState["equips"]] = undefined;
           pl.hand.push({ ...eq });
           pl.stats.handsOrEquipTaken += 1;
@@ -647,7 +648,7 @@ export async function playCardInternal(
           // 真正装备时 playCardInternal 的 equip 分支会计数，否则同一件畸变物会被算两次。
           log(s, `${pName(pl)} 使用【篡取】，获得了${pName(t)}的【${eq.name}】！`, "card");
         } else if (t.hand.length) {
-          const stolenIdx = Math.floor(Math.random() * t.hand.length);
+          const stolenIdx = Math.floor(rand() * t.hand.length);
           const [stolen] = t.hand.splice(stolenIdx, 1);
           pl.hand.push(stolen);
           pl.stats.handsOrEquipTaken += 1;
@@ -769,7 +770,7 @@ export async function playCardInternal(
             if (skillUnlocked(w, "king_or_bandit")) {
               const loser = s.players[currentSeat];
               if (loser.alive && loser.hand.length > 0) {
-                const [stolen] = loser.hand.splice(Math.floor(Math.random() * loser.hand.length), 1);
+                const [stolen] = loser.hand.splice(Math.floor(rand() * loser.hand.length), 1);
                 w.hand.push(stolen);
                 w.stats.handsOrEquipTaken += 1;
                 log(s, `${pName(w)}的【胜者为王】发动，夺取了${pName(loser)}的1张手牌！`, "skill");
@@ -854,7 +855,7 @@ export async function playCardInternal(
         let responds: boolean;
         if (!fresh.isHuman) {
           // AI：血线越低越倾向于消耗牌保命
-          responds = fresh.fragments <= 2 || Math.random() < 0.7;
+          responds = fresh.fragments <= 2 || rand() < 0.7;
         } else {
           responds = await requestChoice(
             set, get, victimSeat, cardLabel,
@@ -877,7 +878,7 @@ export async function playCardInternal(
             s.discardPile.push(c);
             log(s, `${pName(t)} 打出【${needName}】，化解了${cardLabel}！`, "card");
           } else if (t.hand.length > 0) {
-            const [c] = t.hand.splice(Math.floor(Math.random() * t.hand.length), 1);
+            const [c] = t.hand.splice(Math.floor(rand() * t.hand.length), 1);
             s.discardPile.push(c);
             log(s, `${pName(t)} 凭借【留白屏障】弃置【${c.name}】，化解了${cardLabel}！`, "card");
           }

@@ -147,7 +147,6 @@ export function eliminatePlayer(state: GameState, seat: number, killerSeat: numb
   }
   // 纸鸢社(12)：被淘汰者退出"需要看穿的对手"名单，避免死人拖住条件
   for (const other of state.players) {
-    other.stats.initialOpponents.delete(seat);
     other.stats.viewedFullHandOf.delete(seat);
   }
   // [P5-62] Clean up statusFlags for dead player and reset puppetTarget references

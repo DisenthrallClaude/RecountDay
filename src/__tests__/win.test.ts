@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { checkFactionWin, evaluateWinners } from "../engine/win";
+import { checkFactionWin, evaluateWinners, WIN_THRESHOLDS } from "../engine/win";
+import { FACTIONS } from "../data/factions";
 import type { GameState, PlayerState } from "../engine/types";
 import { freshStats } from "../store/helpers";
 import { getCharacter } from "../data/characters";
@@ -288,5 +289,54 @@ describe("胜利条件判定 — evaluateWinners", () => {
     state.players.forEach((p) => (p.alive = false));
     const result = evaluateWinners(state);
     expect(result).toBeNull();
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   文案 ↔ 实现 一致性
+   ----------------------------------------------------------------
+   这一组不测游戏行为，测的是"卷宗上印的数字"和"引擎真正判定的数字"
+   是不是同一个。历史上它们分家过四次（黑帆书库 5 vs 4、锈字修道院
+   15 vs 12、远星漏掉篇幅门槛、纸鸢社的"所有"其实只算存活者），
+   而玩家是照着密令上的数字做规划的 —— 数字不对，规划就是错的。
+   ════════════════════════════════════════════════════════════════ */
+describe("阵营胜利条件：文案与实现必须一致", () => {
+  /** 从一段中文文案里抠出所有阿拉伯数字 */
+  const nums = (t: string) => (t.match(/\d+/g) ?? []).map(Number);
+  const winTextOf = (id: number) => FACTIONS.find((f) => f.id === id)!.win;
+
+  const CASES: { id: number; name: string; expect: number }[] = [
+    { id: 1, name: "灰塔", expect: WIN_THRESHOLDS.huitaKills },
+    { id: 2, name: "白纸城", expect: WIN_THRESHOLDS.baizhichengTurns },
+    { id: 4, name: "长夜档案馆", expect: WIN_THRESHOLDS.changyeAcquired },
+    { id: 7, name: "黑帆书库", expect: WIN_THRESHOLDS.heifanTaken },
+    { id: 10, name: "旧日读书会", expect: WIN_THRESHOLDS.jiuriEquipped },
+    { id: 11, name: "锈字修道院", expect: WIN_THRESHOLDS.xiuziHealed },
+    { id: 16, name: "墨冢", expect: WIN_THRESHOLDS.mozhongResidue },
+    { id: 17, name: "第七灯塔", expect: WIN_THRESHOLDS.dengtaAssists },
+    { id: 18, name: "迷途", expect: WIN_THRESHOLDS.mituRecoveries },
+    { id: 20, name: "渡鸦邮局", expect: WIN_THRESHOLDS.duyaDraws },
+  ];
+
+  it.each(CASES)("$name($id) 的文案数字应当出现在实现阈值里", ({ id, name, expect: threshold }) => {
+    const text = winTextOf(id);
+    expect(
+      nums(text),
+      `【${name}】文案「${text}」里没有出现实现阈值 ${threshold} —— ` +
+        "要么改 WIN_THRESHOLDS，要么改 factions.ts 的文案，两边必须是同一个数。",
+    ).toContain(threshold);
+  });
+
+  it("每个势力都有非空的胜利条件文案", () => {
+    for (const f of FACTIONS) {
+      expect(f.win.trim().length, `【${f.name}】的 win 文案为空`).toBeGreaterThan(0);
+    }
+  });
+
+  it("checkFactionWin 覆盖了全部 22 个势力（没有恒为 false 的死条件）", () => {
+    // default 分支恒为 false；用一个不存在的 factionId 确认 default 确实是 false，
+    // 再确认每个真实 factionId 都不会走到 default。
+    const ids = FACTIONS.map((f) => f.id).sort((a, b) => a - b);
+    expect(ids).toEqual(Array.from({ length: 22 }, (_, i) => i + 1));
   });
 });

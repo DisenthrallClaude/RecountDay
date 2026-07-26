@@ -1,3 +1,4 @@
+import { rand } from "../engine/rng";
 import type { CardDef } from "../data/cards";
 import { CHARACTERS, getCharacter } from "../data/characters";
 import type { GameState, PlayerState } from "../engine/types";
@@ -216,7 +217,7 @@ async function runSkillEffect(
       set((s) => {
         // 卡面是"不能使用笔伐 *或* 不能使用角色技能"，是二选一而非全都锁死。
         // 随机挑一个可以保留心理博弈，也避免一个1费技能直接废掉对手整个回合。
-        const lockSkill = Math.random() < 0.5;
+        const lockSkill = rand() < 0.5;
         s.players[tgt].statusFlags[lockSkill ? "cannot_skill" : "cannot_bifa"] = { expireSeat: seat };
         log(s, `${pName(s.players[seat])} 对${pName(s.players[tgt])}发动【心锁】，其下回合不能使用${lockSkill ? "角色技能" : "笔伐"}！`, "skill");
       });
@@ -265,7 +266,7 @@ async function runSkillEffect(
         } else {
           // Show a random basic card
           const basics = t.hand.filter((c) => c.kind === "basic");
-          const shown = basics[Math.floor(Math.random() * basics.length)];
+          const shown = basics[Math.floor(rand() * basics.length)];
           log(s, `${pName(s.players[seat])} 发动【散布流言】，${pName(t)}展示了【${shown.name}】。`, "skill");
         }
       });
@@ -320,7 +321,7 @@ async function runSkillEffect(
         const pl = s.players[seat];
         const avail = s.discardPile.filter((c) => c.kind === "strategy");
         if (avail.length) {
-          const chosen = avail[Math.floor(Math.random() * avail.length)];
+          const chosen = avail[Math.floor(rand() * avail.length)];
           const idx = s.discardPile.findIndex((c) => c.uid === chosen.uid);
           if (idx >= 0) s.discardPile.splice(idx, 1);
           pl.hand.push({ ...chosen, uid: chosen.uid + "_a" });
@@ -338,7 +339,7 @@ async function runSkillEffect(
         const t = s.players[tgt];
         const equipEntries = Object.entries(t.equips).filter(([, v]) => v) as [string, CardDef][];
         if (equipEntries.length) {
-          const [slot, eq] = equipEntries[Math.floor(Math.random() * equipEntries.length)];
+          const [slot, eq] = equipEntries[Math.floor(rand() * equipEntries.length)];
           t.equips[slot as keyof PlayerState["equips"]] = undefined;
           s.discardPile.push({ ...eq });
           log(s, `${pName(s.players[seat])} 发动【断联】，弃置了${pName(t)}的【${eq.name}】！`, "skill");
@@ -492,7 +493,7 @@ async function runSkillEffect(
         const pl = s.players[seat];
         const t = s.players[tgt];
         if (t.hand.length > 0) {
-          const idx = Math.floor(Math.random() * t.hand.length);
+          const idx = Math.floor(rand() * t.hand.length);
           const [c] = t.hand.splice(idx, 1);
           pl.hand.push(c);
           pl.stats.handsOrEquipTaken += 1;
@@ -545,7 +546,7 @@ async function runSkillEffect(
         set((s) => log(s, "已淘汰角色没有可窃取的主动技能。", "system"));
         break;
       }
-      const picked = deadSkills[Math.floor(Math.random() * deadSkills.length)];
+      const picked = deadSkills[Math.floor(rand() * deadSkills.length)];
       set((s) => {
         log(s, `${pName(s.players[seat])} 发动【千面窃能】，化身【${getCharacter(picked.chId).name}】，施放【${picked.sk.name}】！`, "skill");
       });
@@ -678,7 +679,7 @@ async function runSkillEffect(
               if (skillUnlocked(w, "king_or_bandit")) {
                 const l = s.players[loserSeat];
                 if (l.alive && l.hand.length > 0) {
-                  const idx = Math.floor(Math.random() * l.hand.length);
+                  const idx = Math.floor(rand() * l.hand.length);
                   const [stolen] = l.hand.splice(idx, 1);
                   w.hand.push(stolen);
                   w.stats.handsOrEquipTaken += 1;
@@ -711,7 +712,7 @@ async function runSkillEffect(
       set((s) => {
         const pl = s.players[seat];
         if (pl.hand.length > 0) {
-          const idx = Math.floor(Math.random() * pl.hand.length);
+          const idx = Math.floor(rand() * pl.hand.length);
           const [c] = pl.hand.splice(idx, 1);
           s.discardPile.push(c);
           log(s, `${pName(pl)} 发动【等价交换】，弃置【${c.name}】。`, "skill");
@@ -728,7 +729,7 @@ async function runSkillEffect(
       set((s) => {
         const t = s.players[tgt];
         if (t.hand.length > 0) {
-          const idx = Math.floor(Math.random() * t.hand.length);
+          const idx = Math.floor(rand() * t.hand.length);
           const [c] = t.hand.splice(idx, 1);
           s.discardPile.push(c);
           log(s, `${pName(s.players[seat])} 发动【祭祀】，${pName(t)}弃置了【${c.name}】。`, "skill");
