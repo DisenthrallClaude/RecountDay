@@ -170,17 +170,18 @@ describe("胜利条件判定 — checkFactionWin", () => {
   });
 
   describe("渡鸦邮局 (faction 20)", () => {
-    it("累计摸牌达到20时获胜", () => {
+    it("累计摸牌达到门槛时获胜", () => {
       const state = makeTestState();
       state.players[0].factionId = 20;
-      state.players[0].stats.drawnTotal = 20;
+      // 跟着常量走，别再写死一个数 —— 门槛调过一次就会忘掉同步
+      state.players[0].stats.drawnTotal = WIN_THRESHOLDS.duyaDraws;
       expect(checkFactionWin(state, state.players[0])).toBe(true);
     });
 
     it("累计摸牌不足20时不获胜", () => {
       const state = makeTestState();
       state.players[0].factionId = 20;
-      state.players[0].stats.drawnTotal = 19;
+      state.players[0].stats.drawnTotal = WIN_THRESHOLDS.duyaDraws - 1;
       expect(checkFactionWin(state, state.players[0])).toBe(false);
     });
   });

@@ -29,6 +29,17 @@ import { getCharacter } from "../data/characters";
 /**
  * 需要在文案里露出的数值阈值。
  * 改这里就必须同步改 factions.ts 的 win 文案，否则 win.test.ts 会失败。
+ *
+ * 三个数是实测扫出来的，不是拍的。方法：balance.probe.test.ts 跑 300 局，
+ * 逐个候选值测该阵营的出场胜率（四人局的朴素基准约 25%）。
+ *
+ *   渡鸦邮局   20 → 55.4%   24 → 44.6%   28 → 36.9%   32 → 32.3%   取 28
+ *   锈字修道院 12 →  6.5%    9 → 23.9%    8 → 28.3%    7 → 37.0%   取 8
+ *   黑帆书库    4 →  5.1%    3 → 10.2%    2 → 23.7%                取 2
+ *
+ * 原来的 20 让渡鸦邮局变成纯计时器：中位对局里它自然就摸满了，
+ * 玩家不需要做任何决策；而黑帆书库要夺 4 张，整副牌里【篡取】总共才 4 张，
+ * 分到一个人手上通常 0~1 张 —— 那不是"难"，是算术上够不到。
  */
 export const WIN_THRESHOLDS = {
   /** 灰塔(1)：淘汰数 */
@@ -38,11 +49,11 @@ export const WIN_THRESHOLDS = {
   /** 长夜档案馆(4)：累计获得畸变物件数 */
   changyeAcquired: 3,
   /** 黑帆书库(7)：累计从他人处夺得的手牌/畸变物张数 */
-  heifanTaken: 4,
+  heifanTaken: 2,
   /** 旧日读书会(10)：同时装备件数 */
   jiuriEquipped: 3,
   /** 锈字修道院(11)：累计恢复篇幅段数 */
-  xiuziHealed: 12,
+  xiuziHealed: 8,
   /** 墨冢(16)：拾取残片数 */
   mozhongResidue: 2,
   /** 第七灯塔(17)：造成过伤害且最终被淘汰的玩家数 */
@@ -50,7 +61,7 @@ export const WIN_THRESHOLDS = {
   /** 迷途(18)：从低篇幅恢复到满的次数 */
   mituRecoveries: 2,
   /** 渡鸦邮局(20)：累计摸牌数 */
-  duyaDraws: 20,
+  duyaDraws: 28,
 } as const;
 
 function aliveSeats(state: GameState): number[] {
