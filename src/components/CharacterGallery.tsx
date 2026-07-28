@@ -869,37 +869,35 @@ const Backdrop = memo(function Backdrop({ reduce }: { reduce: boolean }) {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {/* 底：深空渐变。
-          必须是**半透明**的——旧版这里是一层不透明渐变，直接把下面的阵法底图
-          整个盖死，于是「阵法看不见」。改成 rgba 之后阵法才透得上来。 */}
+          半透明，让阵法底图的亮线能透上来；中心区适当留亮。 */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 120% 90% at 50% 42%, rgba(27,22,17,0.72) 0%, rgba(14,11,8,0.8) 44%, rgba(6,4,2,0.9) 78%, rgba(3,2,1,0.94) 100%)",
+            "radial-gradient(ellipse 120% 90% at 50% 42%, rgba(32,26,18,0.58) 0%, rgba(17,13,9,0.7) 44%, rgba(8,6,3,0.84) 78%, rgba(4,3,2,0.92) 100%)",
         }}
       />
       {/* 阵法底图。
-          之前它按 opacity 0.55 + brightness 1.7 压在这里，结果是喧宾夺主：
-          那张图本身就是一幅**满是细线的曼陀罗**，明度和线宽都跟星辰与丝线
-          处在同一档，于是 24 颗星、42 条丝线全部沉进它的线阵里 ——
-          这正是这一屏"看起来什么都有、其实什么都看不清"的根源。
-          底图退到 0.16，只负责给出圆形构图与纹理；主角让给星辰。 */}
+          采用 screen 混合模式：jpg 暗背景自动透明，只留亮线叠加发光，
+          这样既不压住底层渐变，阵法纹路又能清晰透出。
+          配合 sepia 暖色调，与哥特金线美学统一；亮度/对比度拉高让细线醒目。 */}
       <div
         className="absolute inset-0"
         style={{
           backgroundImage: `url(${assetUrl("images/formation_bg.jpg")})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          filter: "grayscale(1) brightness(1.25) contrast(1.15)",
-          opacity: 0.16,
+          filter: "brightness(1.45) contrast(1.4) sepia(0.35) saturate(0.85)",
+          opacity: 0.44,
+          mixBlendMode: "screen",
         }}
       />
-      {/* 中心压暗：星辰与丝线集中在中央，那里必须是全屏最干净的一块 */}
+      {/* 中心微压：保留星辰聚焦区的干净感，但不再把阵法纹路压没 */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 62% 58% at 50% 47%, rgba(3,2,1,0.72) 0%, rgba(3,2,1,0.34) 52%, transparent 78%)",
+            "radial-gradient(ellipse 62% 58% at 50% 47%, rgba(3,2,1,0.36) 0%, rgba(3,2,1,0.14) 52%, transparent 78%)",
         }}
       />
       {/* 星云团 */}
@@ -1059,7 +1057,7 @@ const Backdrop = memo(function Backdrop({ reduce }: { reduce: boolean }) {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 92% 88% at 50% 48%, transparent 52%, rgba(3,2,1,0.32) 82%, rgba(0,0,0,0.72) 100%)",
+            "radial-gradient(ellipse 92% 88% at 50% 48%, transparent 52%, rgba(3,2,1,0.22) 82%, rgba(0,0,0,0.55) 100%)",
         }}
       />
     </div>
@@ -1399,7 +1397,7 @@ export default function CharacterGallery({ onBack }: { onBack: () => void }) {
                     className="absolute inset-0 pointer-events-none"
                     style={{
                       zIndex: 1,
-                      background: `radial-gradient(circle at ${(layout.nodes[focusedId].ux * 100).toFixed(1)}% ${(layout.nodes[focusedId].uy * 100).toFixed(1)}%, transparent 0%, transparent 18%, rgba(3,2,1,0.55) 48%, rgba(0,0,0,0.86) 86%)`,
+                      background: `radial-gradient(circle at ${(layout.nodes[focusedId].ux * 100).toFixed(1)}% ${(layout.nodes[focusedId].uy * 100).toFixed(1)}%, transparent 0%, transparent 18%, rgba(3,2,1,0.38) 48%, rgba(0,0,0,0.68) 86%)`,
                     }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
